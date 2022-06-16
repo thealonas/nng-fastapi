@@ -24,7 +24,7 @@
     <ItemGroup>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
         <PackageReference Include="nng" Version="1.0.0" />
-        <PackageReference Include="Sentry" Version="3.17.1" />
+        <PackageReference Include="Sentry" Version="3.18.0" />
         <PackageReference Include="VkNet" Version="1.69.0" />
     </ItemGroup>
 
