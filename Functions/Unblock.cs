@@ -1,10 +1,10 @@
 using nng.Enums;
-using nng.Exceptions;
 using nng.VkFrameworks;
 using nng_one.Containers;
 using nng_one.FunctionParameters;
 using nng_one.Helpers;
 using nng_one.Logging;
+using VkNet.Exception;
 
 namespace nng_one.Functions;
 
@@ -63,13 +63,13 @@ public static class Unblock
 
     private static void UnblockUser(long group, long user)
     {
-        VkFramework.SetSecondsToWait(10);
+        VkFramework.CaptchaSecondsToWait = 10;
         try
         {
             VkFramework.UnBlock(group, user);
             Logger.Log($"Разблокировали {user} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Не удалось разблокировать {user} в сообществе {group}", LogType.Error);
             Logger.Log(e);

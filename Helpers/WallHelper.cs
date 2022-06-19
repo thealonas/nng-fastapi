@@ -1,8 +1,8 @@
-using nng.Exceptions;
 using nng.VkFrameworks;
 using nng_one.Containers;
 using nng_one.Logging;
 using VkNet.Enums;
+using VkNet.Exception;
 
 namespace nng_one.Helpers;
 
@@ -18,7 +18,7 @@ public static class WallHelper
             old = VkFramework.SetWall(group, state);
             Logger.Log($"Установили стену в группе {group} в состояние {state}", LogType.Debug);
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log(e);
             Logger.Log($"Не удалось переключить стену на {state} в сообществе {group}", LogType.Error);

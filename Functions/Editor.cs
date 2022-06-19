@@ -1,5 +1,4 @@
 ﻿using nng.Enums;
-using nng.Exceptions;
 using nng.VkFrameworks;
 using nng_one.Containers;
 using nng_one.Extensions;
@@ -7,6 +6,7 @@ using nng_one.FunctionParameters;
 using nng_one.Helpers;
 using nng_one.Logging;
 using VkNet.Enums.SafetyEnums;
+using VkNet.Exception;
 using VkNet.Model;
 
 namespace nng_one.Functions;
@@ -86,13 +86,13 @@ public static class Editor
 
     private static void GiveEditor(long group, long user)
     {
-        VkFramework.SetSecondsToWait(3600);
+        VkFramework.CaptchaSecondsToWait = 3600;
         try
         {
             VkFramework.EditManager(user, group, ManagerRole.Editor);
             Logger.Log($"Выдали редактора {user} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Не возможно выдать редактора {user} в сообществе {group}", LogType.Error);
             Logger.Log(e);
@@ -101,13 +101,13 @@ public static class Editor
 
     private static void FireEditor(long group, long editor)
     {
-        VkFramework.SetSecondsToWait(3600);
+        VkFramework.CaptchaSecondsToWait = 3600;
         try
         {
             VkFramework.EditManager(editor, group, null);
             Logger.Log($"Сняли редактора {editor} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Не удалось снять редактора {editor} в сообществе {group}", LogType.Error);
             Logger.Log(e);

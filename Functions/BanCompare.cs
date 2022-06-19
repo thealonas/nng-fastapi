@@ -1,10 +1,10 @@
 ﻿using nng.Enums;
-using nng.Exceptions;
 using nng.VkFrameworks;
 using nng_one.Containers;
 using nng_one.FunctionParameters;
 using nng_one.Helpers;
 using nng_one.Logging;
+using VkNet.Exception;
 using VkNet.Model;
 
 namespace nng_one.Functions;
@@ -104,13 +104,13 @@ public static class BanCompare
 
     private static void BanUser(long user, long group, string banReason)
     {
-        VkFramework.SetSecondsToWait(10);
+        VkFramework.CaptchaSecondsToWait = 10;
         try
         {
             VkFramework.Block(group, user, banReason);
             Logger.Log($"Заблокировали {user} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log(e);
             Logger.Log($"Не удалось заблокировать {user} в сообществе {group}", LogType.Error);
@@ -120,13 +120,13 @@ public static class BanCompare
 
     private static void FireEditor(long user, long group)
     {
-        VkFramework.SetSecondsToWait(3600);
+        VkFramework.CaptchaSecondsToWait = 3600;
         try
         {
             VkFramework.EditManager(user, group, null);
             Logger.Log($"Сняли {user} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log(e);
             Logger.Log($"Не удалось удалить из руководителей {user} в сообществе {group}", LogType.Error);
@@ -135,13 +135,13 @@ public static class BanCompare
 
     private static void UnblockUser(long user, long group)
     {
-        VkFramework.SetSecondsToWait(10);
+        VkFramework.CaptchaSecondsToWait = 10;
         try
         {
             VkFramework.UnBlock(group, user);
             Logger.Log($"Разблокировали {user} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log(e);
             Logger.Log($"Не удалось разблокировать {user} в сообществе {group}", LogType.Error);

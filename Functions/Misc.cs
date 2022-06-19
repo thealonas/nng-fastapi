@@ -1,5 +1,4 @@
 using nng.Enums;
-using nng.Exceptions;
 using nng.Models;
 using nng.VkFrameworks;
 using nng_one.Containers;
@@ -8,6 +7,7 @@ using nng_one.Helpers;
 using nng_one.Interfaces;
 using nng_one.Logging;
 using VkNet.Enums;
+using VkNet.Exception;
 using VkNet.Model;
 using VkNet.Utils;
 using CaptchaHandler = nng_one.Helpers.CaptchaHandler;
@@ -65,7 +65,7 @@ public static class Misc
             VkFramework.Repost(group, post);
             Logger.Log($"Сделали репост {post} в сообщество {group.Id}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Не удалось произвести репост {post} в сообщество {group}");
             Logger.Log(e);
@@ -104,7 +104,7 @@ public static class Misc
             Logger.Log($"Количество постов: {posts.Count}");
             foreach (var post in posts) DeletePostInGroup(group.Id, post.Id);
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Не удалось получить посты сообщества {group.Id}");
             Logger.Log(e);
@@ -119,7 +119,7 @@ public static class Misc
             VkFramework.DeletePost(group, (long) post);
             Logger.Log($"Удалили пост {post} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Не удалось удалить пост {post} в сообществе {group}");
             Logger.Log(e);
@@ -184,13 +184,13 @@ public static class Misc
 
     private static void DeleteDog(long group, long user)
     {
-        VkFramework.SetSecondsToWait(3600);
+        VkFramework.CaptchaSecondsToWait = 3600;
         try
         {
             VkFramework.EditManager(user, group, null);
             Logger.Log($"Сняли редактора {user} в сообществе {group}");
         }
-        catch (VkFrameworkMethodException e)
+        catch (VkApiException e)
         {
             Logger.Log($"Невозможно удалить {user} из сообщества {group}", LogType.Error);
             Logger.Log(e);
