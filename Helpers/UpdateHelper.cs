@@ -10,7 +10,7 @@ public struct GithubUpdate
         NewVersion = newVersion;
     }
 
-    [field: JsonProperty("tag_name")] public string? NewVersion { get; }
+    [JsonProperty("tag_name")] public string? NewVersion;
 }
 
 public static class UpdateHelper

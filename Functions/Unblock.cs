@@ -29,7 +29,7 @@ public static class Unblock
 
         foreach (var group in unblockParameters.Groups)
         {
-            Logger.Log($"Переходи к сообществу {group.Id}");
+            Logger.Log($"Переходим к сообществу {group.Id}");
             CallbackHelper.SetCallback(group.Id, CallbackOperation.Block, false);
             UnblockUsers(group.Id, unblockParameters.Users.Select(x => x.Id));
             CallbackHelper.SetCallback(group.Id, CallbackOperation.Block, true);
