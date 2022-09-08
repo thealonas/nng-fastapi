@@ -1,14 +1,19 @@
-using nng.Enums;
-using nng.Models;
-using nng.VkFrameworks;
+using System.Net.Http.Headers;
+using System.Text;
+using Newtonsoft.Json.Linq;
 using nng_one.Containers;
 using nng_one.FunctionParameters;
 using nng_one.Helpers;
 using nng_one.Interfaces;
 using nng_one.Logging;
+using nng.Enums;
+using nng.Models;
+using nng.VkFrameworks;
+using Sentry;
 using VkNet.Enums;
 using VkNet.Exception;
 using VkNet.Model;
+using VkNet.Model.RequestParams.Stories;
 using VkNet.Utils;
 using CaptchaHandler = nng_one.Helpers.CaptchaHandler;
 
@@ -137,6 +142,10 @@ public static class Misc
             case MiscFunctionType.Stats:
                 ProcessStats(Data.GroupList.Select(x => new Group {Id = x}).ToList());
                 break;
+            case MiscFunctionType.RepostStories:
+                ProcessRepostStories(parameters.Groups ?? throw new InvalidOperationException(),
+                    parameters.StoryUrl ?? throw new InvalidOperationException());
+                break;
             case MiscFunctionType.RemoveBanned:
                 ProcessDeleteDogs(parameters.Groups ?? throw new InvalidOperationException());
                 break;
@@ -195,6 +204,61 @@ public static class Misc
             Logger.Log($"Невозможно удалить {user} из сообщества {group}", LogType.Error);
             Logger.Log(e);
         }
+    }
+
+    private static void ProcessRepostStories(IEnumerable<Group> groups, string url)
+    {
+        using var client = new HttpClient();
+        var bytes = File.ReadAllBytes("story.jpg");
+        var toSave = new List<string>();
+
+        foreach (var group in groups)
+        {
+            Logger.Log($"Обрабатываем сообщество {group.Id}");
+
+            var uploadResult = VkFrameworkExecution.ExecuteWithReturn(() =>
+                VkFramework.Api.Stories.GetPhotoUploadServer(new GetPhotoUploadServerParams
+                {
+                    LinkUrl = url,
+                    GroupId = (ulong) group.Id,
+                    AddToNews = true
+                }));
+
+            Logger.Log($"Получили ссылку на загрузку: {uploadResult.UploadUrl}, посылаем POST-запрос…", LogType.Debug);
+
+            try
+            {
+                var result = JObject.Parse(UploadFile(uploadResult.UploadUrl.ToString(), bytes, "jpg"));
+                var response = result["response"] ?? throw new NullReferenceException();
+                var serverUploadResult = response["upload_result"] ?? throw new NullReferenceException();
+
+                toSave.Add(serverUploadResult.ToString());
+            }
+            catch (Exception e)
+            {
+                SentrySdk.CaptureException(e);
+                Logger.Log($"Ошибка при публикации истории: {e.GetType()}: {e.Message}", LogType.Error);
+            }
+        }
+
+        Logger.Log("Сохраняем истории…");
+        foreach (var server in toSave)
+            VkFrameworkExecution.Execute(() => VkFramework.Api.Call("stories.save", new VkParameters
+            {
+                {"upload_results", server}
+            }));
+    }
+
+    private static string UploadFile(string serverUrl, byte[] file, string fileExtension)
+    {
+        using var client = new HttpClient();
+        var requestContent = new MultipartFormDataContent();
+        var content = new ByteArrayContent(file);
+        content.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+        requestContent.Add(content, "file", $"file.{fileExtension}");
+
+        var response = client.PostAsync(serverUrl, requestContent).GetAwaiter().GetResult();
+        return Encoding.Default.GetString(response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult());
     }
 
     #endregion

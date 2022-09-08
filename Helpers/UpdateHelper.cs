@@ -33,7 +33,7 @@ public static class UpdateHelper
 
             var newVersion = new string(data.NewVersion.Where(char.IsDigit).ToArray());
             var ver = Program.Version;
-            var currentVersion = int.Parse($"{ver.Major}{ver.Minor}");
+            var currentVersion = int.Parse($"{ver.Major}{ver.Minor}{ver.Build}");
 
             if (int.Parse(newVersion) <= currentVersion) return false;
 

@@ -1,9 +1,9 @@
-﻿using nng.Models;
-using nng_one.Configs;
+﻿using nng_one.Configs;
 using nng_one.Containers;
 using nng_one.FunctionParameters;
 using nng_one.Interfaces;
 using nng_one.Logging;
+using nng.Models;
 using VkNet.Model;
 
 namespace nng_one.Menu;
@@ -147,7 +147,7 @@ public class Menu
     {
         var funcChoice = _inputHandler.GetMenuInput(new[]
         {
-            "Репост записи",
+            "Репост записи", "Репост истории",
             "Удаление всех записей со стены", "Статистика", "Снятие собачек"
         }, out var returnBack);
         if (returnBack)
@@ -163,15 +163,19 @@ public class Menu
                 return new GroupWallParameters(_config, GroupWallParametersType.Repost,
                     _data.GroupList.Select(x => new Group {Id = x}), post);
             case 1:
+                var story = _inputHandler.GetStringInput("Введите ссылку на пост", 4);
+                var groups = _data.GroupList.Select(x => new Group {Id = x});
+                return new MiscParameters(_config, MiscFunctionType.RepostStories, groups, story);
+            case 2:
                 if (!_inputHandler.GetBoolInput("Вы уверены, что хотите начать сравнение несостыковок?"))
                     return Misc();
                 return new GroupWallParameters(_config, GroupWallParametersType.DeleteAllPosts,
                     _data.GroupList.Select(x => new Group {Id = x}), null);
-            case 2:
-                return new MiscParameters(_config, MiscFunctionType.Stats, null);
             case 3:
+                return new MiscParameters(_config, MiscFunctionType.Stats, null, null);
+            case 4:
                 return new MiscParameters(_config, MiscFunctionType.RemoveBanned,
-                    _data.GroupList.Select(x => new Group {Id = x}));
+                    _data.GroupList.Select(x => new Group {Id = x}), null);
             default:
                 throw new ArgumentOutOfRangeException();
         }

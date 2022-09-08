@@ -6,7 +6,7 @@ namespace nng_one.Configs;
 public static class ConfigDialog
 {
     private const string TokenUrl =
-        "https://oauth.vk.com/authorize?client_id=7436182&scope=270340&redirect_uri=https://oauth.vk.com/blank.html&display=page&response_type=token&revoke=1";
+        "https://oauth.vk.com/authorize?client_id=7436182&scope=270404&redirect_uri=https://oauth.vk.com/blank.html&display=page&response_type=token&revoke=1";
 
     private static readonly InputHandler InputHandler = InputHandler.GetInstance();
 

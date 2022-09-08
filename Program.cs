@@ -1,11 +1,11 @@
 ﻿using System.Text;
-using nng.Data;
-using nng.VkFrameworks;
 using nng_one.Configs;
 using nng_one.Containers;
 using nng_one.Exceptions;
 using nng_one.Helpers;
 using nng_one.Logging;
+using nng.Helpers;
+using nng.VkFrameworks;
 using Sentry;
 
 namespace nng_one;
@@ -17,7 +17,7 @@ public static class CommandLineArguments
 
 public static class Program
 {
-    public static readonly Version Version = new(1, 0);
+    public static readonly Version Version = new(1, 2, 0);
     public static bool DebugMode { get; private set; }
     private static bool SentryEnabled { get; set; }
 
