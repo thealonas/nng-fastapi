@@ -1,8 +1,9 @@
-﻿using nng_one.Containers;
-using nng_one.FunctionParameters;
-using nng_one.Helpers;
+﻿using nng_one.FunctionParameters;
 using nng_one.Logging;
+using nng_one.ServiceCollections;
 using nng.Enums;
+using nng.Helpers;
+using nng.Logging;
 using nng.VkFrameworks;
 using VkNet.Exception;
 using VkNet.Model;
@@ -11,7 +12,9 @@ namespace nng_one.Functions;
 
 public static class BanCompare
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
+    private static readonly CallbackHelper CallbackHelper = ServiceCollectionContainer.GetInstance().CallbackHelper;
     private static readonly InputHandler InputHandler = InputHandler.GetInstance();
 
     private static readonly Dictionary<long, Dictionary<long, bool>> UsersThatShouldBeBanned = new();

@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Logging;
 
 namespace nng_one.Helpers;
 
@@ -16,6 +17,8 @@ public struct GithubUpdate
 public static class UpdateHelper
 {
     private const string ApiUrl = "https://api.github.com/repos/MrAlonas/nng-one/releases/latest";
+
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public static bool IfUpdateNeed(out string version)
     {

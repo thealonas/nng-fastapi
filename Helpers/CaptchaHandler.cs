@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Enums;
+using nng.Logging;
 using VkNet.Utils.AntiCaptcha;
 
 namespace nng_one.Helpers;
@@ -7,6 +10,7 @@ namespace nng_one.Helpers;
 public class CaptchaHandler : ICaptchaSolver
 {
     private readonly InputHandler _input = InputHandler.GetInstance();
+    private readonly Logger _logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public string Solve(string url)
     {
@@ -17,6 +21,6 @@ public class CaptchaHandler : ICaptchaSolver
 
     public void CaptchaIsFalse()
     {
-        Logger.Log("Каптча не пройдена", LogType.Error);
+        _logger.Log("Каптча не пройдена", LogType.Error);
     }
 }

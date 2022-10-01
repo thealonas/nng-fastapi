@@ -1,4 +1,6 @@
-using nng_one.Containers;
+using nng_one.ServiceCollections;
+using nng.Enums;
+using nng.Logging;
 using nng.VkFrameworks;
 using VkNet.Model;
 
@@ -6,7 +8,8 @@ namespace nng_one.Logging;
 
 public static class VkUserInput
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
     private static readonly InputHandler InputHandler = InputHandler.GetInstance();
 
     public static IEnumerable<User> GetUserInput()

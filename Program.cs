@@ -1,10 +1,13 @@
 ﻿using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using nng_one.Configs;
-using nng_one.Containers;
 using nng_one.Exceptions;
 using nng_one.Helpers;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Enums;
 using nng.Helpers;
+using nng.Logging;
+using nng.Services;
 using nng.VkFrameworks;
 using Sentry;
 
@@ -17,7 +20,9 @@ public static class CommandLineArguments
 
 public static class Program
 {
-    public static readonly Version Version = new(1, 2, 0);
+    public static readonly Version Version = new(1, 4, 0);
+    public static readonly List<Message> Messages = new();
+    public static readonly Logger Logger = new(new ProgramInformationService(Version, false), "nng one");
     public static bool DebugMode { get; private set; }
     private static bool SentryEnabled { get; set; }
 
@@ -46,7 +51,7 @@ public static class Program
         using (SentrySdk.Init(o =>
                {
                    o.Dsn = "https://ca8c3bff58144b4ca6d677ee5c80b376@o555933.ingest.sentry.io/5905813";
-                   o.Environment = "public";
+                   o.Environment = "dev";
                }))
         {
             while (true)
@@ -58,7 +63,8 @@ public static class Program
                 }
                 catch (Exception e)
                 {
-                    Logger.Log($"{e.GetType()}: {e.Message}", LogType.Error);
+                    Logger.Log(e);
+                    Logger.Log($"stacktrace: {e.StackTrace}", LogType.Error);
                     if (SentryEnabled) SentrySdk.CaptureException(e);
                     Logger.Idle();
                 }
@@ -72,27 +78,23 @@ public static class Program
 
         Config config;
 
+        var info = new ProgramInformationService(Version, DebugMode);
+        var logger = new Logger(info, "nng one");
+        var collectionBuilder = new ServiceCollectionBuilder();
+
         try
         {
             config = ConfigProcessor.LoadConfig();
         }
         catch (ConfigNotFoundException)
         {
-            config = new Config
-            {
-                BanReason = string.Empty,
-                CaptchaBypass = false,
-                DataUrl = string.Empty,
-                Sentry = true,
-                SwitchCallback = true,
-                Token = string.Empty
-            };
+            config = new Config(string.Empty, string.Empty, string.Empty, false, true, true);
             ConfigProcessor.SaveConfig(config);
         }
 
         if (config.Token.Length < 1)
         {
-            Logger.Clear();
+            logger.Clear();
             ConfigDialog.SetUpConfig();
             return false;
         }
@@ -104,37 +106,44 @@ public static class Program
         }
         catch (Exception)
         {
-            Logger.Log("Недействительный токен", LogType.Error);
+            logger.Log("Недействительный токен", LogType.Error);
             ConfigDialog.SetUpToken();
             return false;
         }
 
         VkFramework.OnCaptchaWait += delegate(object? _, CaptchaEventArgs time)
         {
-            Logger.Log($"Каптча, ожидаем {time.SecondsToWait} секунд");
+            logger.Log($"Каптча, ожидаем {time.SecondsToWait} секунд");
         };
 
         if (!config.CaptchaBypass) framework.SetCaptchaSolver(new CaptchaHandler());
         else framework.ResetCaptchaSolver();
 
-        VkFrameworkContainer.GetInstance().SetFramework(framework);
-
         var currentUser = framework.CurrentUser;
-        var logContainer = LogContainer.GetInstance();
-        logContainer.Messages.Clear();
 
-        logContainer.Messages
-            .Add(new Message($"Добро пожаловать, {currentUser.FirstName} | Ваш ID: {currentUser.Id}",
-                LogType.InfoVersionShow));
+        Messages.Add(new Message($"Добро пожаловать, {currentUser.FirstName} | Ваш ID: {currentUser.Id}",
+            LogType.InfoVersionShow));
 
         if (UpdateHelper.IfUpdateNeed(out var version))
-            logContainer.Messages.Add(new Message(
+            Messages.Add(new Message(
                 $"Версия v{Version.Major}.{Version.Minor} устарела, пожалуйста, обновитесь до {version}",
                 LogType.Debug, forceSend: true));
 
         SentryEnabled = config.Sentry;
 
-        DataContainer.GetInstance().SetModel(DataHelper.GetData(config.DataUrl));
+        collectionBuilder.Configure(() =>
+        {
+            var sc = new ServiceCollection();
+            sc.AddSingleton(DataHelper.GetDataAsync(config.DataUrl).GetAwaiter().GetResult());
+            sc.AddSingleton(info);
+            sc.AddSingleton(logger);
+            sc.AddSingleton(config);
+            sc.AddSingleton(framework);
+            sc.AddSingleton(new CallbackHelper(framework, new LoggerWrapper(logger)));
+            return sc;
+        });
+
+        ServiceCollectionContainer.Initialize(collectionBuilder.Build());
         return true;
     }
 }

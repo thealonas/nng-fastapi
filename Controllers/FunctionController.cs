@@ -1,12 +1,16 @@
 using nng_one.FunctionParameters;
 using nng_one.Functions;
 using nng_one.Interfaces;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Enums;
+using nng.Logging;
 
 namespace nng_one.Controllers;
 
 public static class FunctionController
 {
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
+
     public static void ProcessFunction(IFunctionParameter parameter)
     {
         Logger.Clear();

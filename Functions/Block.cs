@@ -1,9 +1,9 @@
 using nng_one.Configs;
-using nng_one.Containers;
 using nng_one.FunctionParameters;
-using nng_one.Helpers;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
 using nng.Enums;
+using nng.Helpers;
+using nng.Logging;
 using nng.VkFrameworks;
 using VkNet.Exception;
 
@@ -11,8 +11,11 @@ namespace nng_one.Functions;
 
 public static class Block
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+
     private static readonly List<long> UsersFailedToBan = new();
+    private static Logger Logger => ServiceCollectionContainer.GetInstance().GlobalLogger;
+    private static CallbackHelper CallbackHelper => ServiceCollectionContainer.GetInstance().CallbackHelper;
 
     public static void Process(BlockParameters blockParameters)
     {

@@ -1,11 +1,14 @@
 ﻿using System.Text;
 using nng_one.Menu;
+using nng.Enums;
+using nng.Logging;
 
 namespace nng_one.Logging;
 
 public class InputHandler
 {
     private static InputHandler? _instance;
+    private static readonly Logger Logger = Program.Logger;
 
     private Message _annotationMessage = new(string.Empty, LogType.Error, forceSend: true);
 
@@ -22,7 +25,7 @@ public class InputHandler
     {
         if (_annotationMessage.IsEmpty()) return;
 
-        _annotationMessage.Send();
+        Logger.Log(_annotationMessage);
         _annotationMessage = new Message(string.Empty, LogType.Error, forceSend: true);
     }
 
@@ -38,7 +41,7 @@ public class InputHandler
 
     private string MenuRawInput(string menuText)
     {
-        Logger.Clear(true);
+        Logger.Clear(Program.Messages);
         ProcessAnnotation();
         Logger.Log("Выберете пункт меню:\n\n");
         Logger.Log(menuText, withoutTitle: true, withoutColor: true);

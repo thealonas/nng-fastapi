@@ -1,13 +1,14 @@
-using nng_one.Containers;
 using nng_one.FunctionParameters;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Logging;
 using nng.VkFrameworks;
 
 namespace nng_one.Functions;
 
 public static class Search
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public static void Process(SearchParameters searchParameters)
     {

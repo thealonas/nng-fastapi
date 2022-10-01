@@ -1,12 +1,13 @@
 using System.Net.Http.Headers;
 using System.Text;
 using Newtonsoft.Json.Linq;
-using nng_one.Containers;
 using nng_one.FunctionParameters;
 using nng_one.Helpers;
 using nng_one.Interfaces;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
 using nng.Enums;
+using nng.Helpers;
+using nng.Logging;
 using nng.Models;
 using nng.VkFrameworks;
 using Sentry;
@@ -21,8 +22,10 @@ namespace nng_one.Functions;
 
 public static class Misc
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
-    private static readonly DataModel Data = DataContainer.GetInstance().Model;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+    private static readonly DataModel Data = ServiceCollectionContainer.GetInstance().Data;
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
+    private static readonly CallbackHelper CallbackHelper = ServiceCollectionContainer.GetInstance().CallbackHelper;
 
     public static void Process(IFunctionParameter functionParameter)
     {

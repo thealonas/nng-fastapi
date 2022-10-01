@@ -1,8 +1,9 @@
 ﻿using nng_one.Configs;
-using nng_one.Containers;
 using nng_one.FunctionParameters;
 using nng_one.Interfaces;
 using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Logging;
 using nng.Models;
 using VkNet.Model;
 
@@ -11,12 +12,13 @@ namespace nng_one.Menu;
 public class Menu
 {
     private readonly Config _config = ConfigProcessor.LoadConfig();
-    private readonly DataModel _data = DataContainer.GetInstance().Model;
+    private readonly DataModel _data = ServiceCollectionContainer.GetInstance().Data;
     private readonly InputHandler _inputHandler = InputHandler.GetInstance();
+    private readonly Logger _logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public IFunctionParameter GetResult()
     {
-        Logger.Clear(true);
+        _logger.Clear(Program.Messages);
         return _inputHandler.GetMainMenuInput() switch
         {
             MainMenuItem.Block => Block(),
@@ -33,7 +35,7 @@ public class Menu
         if (_inputHandler.GetBoolInput("Начать блокировку пользователей в сообществах?"))
             return new BlockParameters(_data.Users.Where(x => !x.Deleted.HasValue).Select(x => x.Id), _data.GroupList,
                 _config);
-        Logger.Clear();
+        _logger.Clear();
         return GetResult();
     }
 
@@ -42,7 +44,7 @@ public class Menu
         var userChoice = _inputHandler.GetMenuInput(new[] {"Пользователя", "Пользователей"}, out var returnBack);
         if (returnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return GetResult();
         }
 
@@ -54,7 +56,7 @@ public class Menu
             _inputHandler.GetMenuInput(new[] {"В сообществе", "В сообществах"}, out var groupReturnBack);
         if (groupReturnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return Unblock();
         }
 
@@ -72,7 +74,7 @@ public class Menu
             : EditorOperationType.Fire;
         if (returnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return GetResult();
         }
 
@@ -81,7 +83,7 @@ public class Menu
         var userChoice = _inputHandler.GetMenuInput(new[] {"Пользователю", "Пользователям"}, out var userReturnBack);
         if (userReturnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return Editors();
         }
 
@@ -95,7 +97,7 @@ public class Menu
             _inputHandler.GetMenuInput(new[] {"В сообществе", "В сообществах"}, out var groupReturnBack);
         if (groupReturnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return Editors();
         }
 
@@ -123,7 +125,7 @@ public class Menu
 
         if (returnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return GetResult();
         }
 
@@ -152,7 +154,7 @@ public class Menu
         }, out var returnBack);
         if (returnBack)
         {
-            Logger.Clear();
+            _logger.Clear();
             return GetResult();
         }
 

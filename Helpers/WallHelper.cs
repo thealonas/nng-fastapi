@@ -1,5 +1,6 @@
-using nng_one.Containers;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
+using nng.Enums;
+using nng.Logging;
 using nng.VkFrameworks;
 using VkNet.Enums;
 using VkNet.Exception;
@@ -8,7 +9,8 @@ namespace nng_one.Helpers;
 
 public static class WallHelper
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public static WallContentAccess SetWall(long group, WallContentAccess state)
     {

@@ -1,9 +1,9 @@
-﻿using nng_one.Containers;
-using nng_one.Extensions;
+﻿using nng_one.Extensions;
 using nng_one.FunctionParameters;
-using nng_one.Helpers;
-using nng_one.Logging;
+using nng_one.ServiceCollections;
 using nng.Enums;
+using nng.Helpers;
+using nng.Logging;
 using nng.VkFrameworks;
 using VkNet.Enums.SafetyEnums;
 using VkNet.Exception;
@@ -13,7 +13,9 @@ namespace nng_one.Functions;
 
 public static class Editor
 {
-    private static readonly VkFramework VkFramework = VkFrameworkContainer.GetInstance().VkFramework;
+    private static readonly CallbackHelper CallbackHelper = ServiceCollectionContainer.GetInstance().CallbackHelper;
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
+    private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public static void Process(EditorParameters parameters)
     {
