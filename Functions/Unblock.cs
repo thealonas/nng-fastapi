@@ -1,5 +1,6 @@
 using nng_one.FunctionParameters;
 using nng_one.ServiceCollections;
+using nng.Constants;
 using nng.Enums;
 using nng.Helpers;
 using nng.Logging;
@@ -65,7 +66,7 @@ public static class Unblock
 
     private static void UnblockUser(long group, long user)
     {
-        VkFramework.CaptchaSecondsToWait = 10;
+        VkFramework.CaptchaSecondsToWait = Constants.CaptchaBlockWaitTime;
         try
         {
             VkFramework.UnBlock(group, user);

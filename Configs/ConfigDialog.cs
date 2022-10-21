@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using nng_one.Logging;
+using nng_one.Input;
 
 namespace nng_one.Configs;
 

@@ -17,6 +17,7 @@ using VkNet.Model;
 using VkNet.Model.RequestParams.Stories;
 using VkNet.Utils;
 using CaptchaHandler = nng_one.Helpers.CaptchaHandler;
+using Constants = nng.Constants.Constants;
 
 namespace nng_one.Functions;
 
@@ -196,7 +197,7 @@ public static class Misc
 
     private static void DeleteDog(long group, long user)
     {
-        VkFramework.CaptchaSecondsToWait = 3600;
+        VkFramework.CaptchaSecondsToWait = Constants.CaptchaEditorWaitTime;
         try
         {
             VkFramework.EditManager(user, group, null);

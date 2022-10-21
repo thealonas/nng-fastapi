@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using nng_one.Configs;
 using nng_one.Exceptions;
@@ -20,7 +21,9 @@ public static class CommandLineArguments
 
 public static class Program
 {
-    public static readonly Version Version = new(1, 4, 0);
+    public static readonly Version Version =
+        Assembly.GetExecutingAssembly().GetName().Version ?? throw new InvalidOperationException();
+
     public static readonly List<Message> Messages = new();
     public static readonly Logger Logger = new(new ProgramInformationService(Version, false), "nng one");
     public static bool DebugMode { get; private set; }

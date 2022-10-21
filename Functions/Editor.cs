@@ -1,6 +1,7 @@
 ﻿using nng_one.Extensions;
 using nng_one.FunctionParameters;
 using nng_one.ServiceCollections;
+using nng.Constants;
 using nng.Enums;
 using nng.Helpers;
 using nng.Logging;
@@ -88,7 +89,7 @@ public static class Editor
 
     private static void GiveEditor(long group, long user)
     {
-        VkFramework.CaptchaSecondsToWait = 3600;
+        VkFramework.CaptchaSecondsToWait = Constants.CaptchaEditorWaitTime;
         try
         {
             VkFramework.EditManager(user, group, ManagerRole.Editor);
@@ -103,7 +104,7 @@ public static class Editor
 
     private static void FireEditor(long group, long editor)
     {
-        VkFramework.CaptchaSecondsToWait = 3600;
+        VkFramework.CaptchaSecondsToWait = Constants.CaptchaEditorWaitTime;
         try
         {
             VkFramework.EditManager(editor, group, null);

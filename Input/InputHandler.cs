@@ -3,7 +3,7 @@ using nng_one.Menu;
 using nng.Enums;
 using nng.Logging;
 
-namespace nng_one.Logging;
+namespace nng_one.Input;
 
 public class InputHandler
 {

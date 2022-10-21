@@ -4,7 +4,7 @@ using nng.Logging;
 using nng.VkFrameworks;
 using VkNet.Model;
 
-namespace nng_one.Logging;
+namespace nng_one.Input;
 
 public static class VkUserInput
 {

@@ -1,6 +1,7 @@
 using nng_one.Configs;
 using nng_one.FunctionParameters;
 using nng_one.ServiceCollections;
+using nng.Constants;
 using nng.Enums;
 using nng.Helpers;
 using nng.Logging;
@@ -53,7 +54,7 @@ public static class Block
 
     private static void BanUser(long user, long group, Config config)
     {
-        VkFramework.CaptchaSecondsToWait = 10;
+        VkFramework.CaptchaSecondsToWait = Constants.CaptchaBlockWaitTime;
         try
         {
             VkFramework.Block(group, user, config.BanReason);
@@ -69,7 +70,7 @@ public static class Block
 
     private static void FireEditor(long user, long group)
     {
-        VkFramework.CaptchaSecondsToWait = 3600;
+        VkFramework.CaptchaSecondsToWait = Constants.CaptchaEditorWaitTime;
         try
         {
             VkFramework.EditManager(user, group, null);

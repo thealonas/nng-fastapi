@@ -1,7 +1,7 @@
 ﻿using nng_one.Configs;
 using nng_one.FunctionParameters;
+using nng_one.Input;
 using nng_one.Interfaces;
-using nng_one.Logging;
 using nng_one.ServiceCollections;
 using nng.Logging;
 using nng.Models;
@@ -33,7 +33,7 @@ public class Menu
     private IFunctionParameter Block()
     {
         if (_inputHandler.GetBoolInput("Начать блокировку пользователей в сообществах?"))
-            return new BlockParameters(_data.Users.Where(x => !x.Deleted.HasValue).Select(x => x.Id), _data.GroupList,
+            return new BlockParameters(_data.Users.Where(x => !x.Deleted).Select(x => x.Id), _data.GroupList,
                 _config);
         _logger.Clear();
         return GetResult();
@@ -139,7 +139,7 @@ public class Menu
                 if (!_inputHandler.GetBoolInput("Вы уверены, что хотите посмотреть несостыковки?"))
                     return Search();
                 return new BanCompareParameters(_data.GroupList.ToList(), _data.Users
-                    .Where(x => !x.Deleted.HasValue).Select(x => x.Id), _config);
+                    .Where(x => !x.Deleted).Select(x => x.Id), _config);
             default:
                 throw new ArgumentOutOfRangeException();
         }
