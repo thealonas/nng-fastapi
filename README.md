@@ -58,3 +58,7 @@
   "SwitchCallback": true <- Отключение Callback API Бот при массовых действиях
 }
 ```
+
+# 🙏 Спасибо
+
+[![MacStadium](https://user-images.githubusercontent.com/60031799/197819735-0322bdc3-782c-4289-8018-e106668b0b7e.png)](https://www.macstadium.com)
