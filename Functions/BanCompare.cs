@@ -27,9 +27,12 @@ public static class BanCompare
         foreach (var group in parameters.Groups)
         {
             var banned = VkFramework.GetBanned(group).ToList();
+
             var managers = VkFramework.GetGroupData(group).Managers.ToList();
+
             var shouldBeBanned =
                 GetUsersThatShouldBeBanned(parameters.Users, banned, managers.Select(x => x.Id).ToList()).ToList();
+
             var shouldNotBeBanned = GetUsersThatShouldNotBeBanned(parameters.Users, banned).ToList();
 
             if (shouldBeBanned.Count > 0)
@@ -155,7 +158,7 @@ public static class BanCompare
     private static Dictionary<long, bool> GetUsersThatShouldBeBanned(IEnumerable<long> bannedUsers,
         IEnumerable<User> currentBannedUsers, ICollection<long> managers)
     {
-        var targetsToBan = bannedUsers.Where(x => currentBannedUsers.All(y => y.Id != x)).ToList();
+        var targetsToBan = bannedUsers.Where(x => currentBannedUsers.All(y => y.Id.Equals(x))).ToList();
         var output = new Dictionary<long, bool>();
         foreach (var target in targetsToBan)
         {

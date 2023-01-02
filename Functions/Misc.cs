@@ -64,7 +64,10 @@ public static class Misc
 
     private static void ProcessRepost(IEnumerable<Group> groups, string post)
     {
+        var originalWaitTime = VkFrameworkExecution.WaitTime;
+        VkFrameworkExecution.WaitTime = TimeSpan.FromHours(1);
         foreach (var group in groups) ProcessRepostInGroup(group, post);
+        VkFrameworkExecution.WaitTime = originalWaitTime;
     }
 
     private static void ProcessRepostInGroup(Group group, string post)

@@ -26,6 +26,7 @@ jobs:
         dotnet publish -r linux-x64 -p:PublishSingleFile=true -c Release --self-contained true --nologo
         dotnet publish -r osx-x64 -p:PublishSingleFile=true -c Release --self-contained true --nologo
         dotnet publish -r win-x64 -p:PublishSingleFile=true -c Release --self-contained true --nologo
+        dotnet publish -r osx-arm64 -p:PublishSingleFile=true -c Release --self-contained true --nologo
 
     - name: Upload Linux Build
       uses: actions/upload-artifact@v3
@@ -44,6 +45,12 @@ jobs:
       with:
         name: nng-one-win64
         path: /home/runner/work/nng-one/nng-one/bin/Release/net6.0/win-x64/publish/
+
+    - name: Upload Windows Build
+      uses: actions/upload-artifact@v3
+      with:
+        name: nng-one-osx-arm64
+        path: /home/runner/work/nng-one/nng-one/bin/Release/net6.0/osx-arm64/publish/
 
   release:
     needs: build
@@ -70,11 +77,18 @@ jobs:
         name: nng-one-win64
         path: win64
 
+    - name: Download macOS M1 build
+      uses: actions/download-artifact@v3
+      with:
+        name: nng-one-osx-arm64
+        path: osx-arm64
+
     - name: Zip all builds
       run: |
         zip nng-one-linux64.zip linux64/*
         zip nng-one-osx.zip osx/*
         zip nng-one-win64.zip win64/*
+        zip nng-one-osx-arm64.zip osx-arm64/*
 
     - name: Create GitHub release
       id: github_release
@@ -82,8 +96,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: "1.5.0"
-        release_name: "1.5.0"
+        tag_name: "1.6.0"
+        release_name: "1.6.0"
 
     - name: Upload Linux build to GitHub release
       uses: actions/upload-release-asset@v1
@@ -113,4 +127,14 @@ jobs:
         upload_url: ${{ steps.github_release.outputs.upload_url }}
         asset_path: /home/runner/work/nng-one/nng-one/nng-one-win64.zip
         asset_name: nng-one-win64.zip
+        asset_content_type: application/zip
+
+    - name: Upload Windows build to GitHub release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.github_release.outputs.upload_url }}
+        asset_path: /home/runner/work/nng-one/nng-one/nng-one-osx-arm64.zip
+        asset_name: nng-one-osx-arm64.zip
         asset_content_type: application/zip

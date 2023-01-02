@@ -8,6 +8,7 @@ using nng_one.ServiceCollections;
 using nng.Enums;
 using nng.Helpers;
 using nng.Logging;
+using nng.Models;
 using nng.Services;
 using nng.VkFrameworks;
 using Sentry;
@@ -26,7 +27,7 @@ public static class Program
 
     public static readonly List<Message> Messages = new();
     public static readonly Logger Logger = new(new ProgramInformationService(Version, false), "nng one");
-    public static bool DebugMode { get; private set; }
+    private static bool DebugMode { get; set; }
     private static bool SentryEnabled { get; set; }
 
     private static void CommandLineProcessor(IEnumerable<string> list)
@@ -66,8 +67,7 @@ public static class Program
                 }
                 catch (Exception e)
                 {
-                    Logger.Log(e);
-                    Logger.Log($"stacktrace: {e.StackTrace}", LogType.Error);
+                    Logger.Log($"Произошла ошибка\n\n{e.GetType()}: {e.Message}\n\n{e.StackTrace}", LogType.Error);
                     if (SentryEnabled) SentrySdk.CaptureException(e);
                     Logger.Idle();
                 }
@@ -105,7 +105,13 @@ public static class Program
         VkFramework framework;
         try
         {
-            framework = new VkFramework(config.Token);
+            framework = new VkFramework(config.Token)
+            {
+                Api =
+                {
+                    RequestsPerSecond = 3
+                }
+            };
         }
         catch (Exception)
         {
@@ -122,11 +128,6 @@ public static class Program
         if (!config.CaptchaBypass) framework.SetCaptchaSolver(new CaptchaHandler());
         else framework.ResetCaptchaSolver();
 
-        var currentUser = framework.CurrentUser;
-
-        Messages.Add(new Message($"Добро пожаловать, {currentUser.FirstName} | Ваш ID: {currentUser.Id}",
-            LogType.InfoVersionShow));
-
         if (UpdateHelper.IfUpdateNeed(out var version))
             Messages.Add(new Message(
                 $"Версия v{Version.Major}.{Version.Minor} устарела, пожалуйста, обновитесь до {version}",
@@ -134,10 +135,23 @@ public static class Program
 
         SentryEnabled = config.Sentry;
 
+        DataModel data;
+        try
+        {
+            data = DataHelper.GetDataAsync(config.DataUrl).GetAwaiter().GetResult();
+        }
+        catch (InvalidOperationException e)
+        {
+            logger.Log("Недействительный URL", LogType.Error);
+            logger.Log($"{e.GetType()}: {e.Message}\n\n{e.StackTrace}", LogType.Debug);
+            ConfigDialog.SetUpConfig();
+            return false;
+        }
+
         collectionBuilder.Configure(() =>
         {
             var sc = new ServiceCollection();
-            sc.AddSingleton(DataHelper.GetDataAsync(config.DataUrl).GetAwaiter().GetResult());
+            sc.AddSingleton(data);
             sc.AddSingleton(info);
             sc.AddSingleton(logger);
             sc.AddSingleton(config);
@@ -147,6 +161,12 @@ public static class Program
         });
 
         ServiceCollectionContainer.Initialize(collectionBuilder.Build());
+
+        var currentUser = framework.CurrentUser;
+
+        Messages.Add(new Message($"Добро пожаловать, {currentUser.FirstName} | Ваш ID: {currentUser.Id}",
+            LogType.InfoVersionShow));
+
         return true;
     }
 }

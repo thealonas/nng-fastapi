@@ -169,7 +169,7 @@ public class Menu
                 var groups = _data.GroupList.Select(x => new Group {Id = x});
                 return new MiscParameters(_config, MiscFunctionType.RepostStories, groups, story);
             case 2:
-                if (!_inputHandler.GetBoolInput("Вы уверены, что хотите начать сравнение несостыковок?"))
+                if (!_inputHandler.GetBoolInput("Вы уверены, что хотите удалить все записи со стены?"))
                     return Misc();
                 return new GroupWallParameters(_config, GroupWallParametersType.DeleteAllPosts,
                     _data.GroupList.Select(x => new Group {Id = x}), null);

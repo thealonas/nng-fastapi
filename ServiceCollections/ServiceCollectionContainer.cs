@@ -15,7 +15,7 @@ public class ServiceCollectionContainer
         ServiceProvider = provider;
     }
 
-    public IServiceProvider ServiceProvider { get; }
+    private IServiceProvider ServiceProvider { get; }
 
     public Logger GlobalLogger => ServiceProvider.ForceGetService<Logger>();
     public VkFramework VkFramework => ServiceProvider.ForceGetService<VkFramework>();
