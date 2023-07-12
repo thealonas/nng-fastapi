@@ -1,18 +1,22 @@
+using nng_one.Extensions;
 using nng_one.FunctionParameters;
 using nng_one.Functions;
 using nng_one.Interfaces;
 using nng_one.ServiceCollections;
 using nng.Enums;
 using nng.Logging;
+using nng.VkFrameworks;
 
 namespace nng_one.Controllers;
 
 public static class FunctionController
 {
+    private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
     private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
 
     public static void ProcessFunction(IFunctionParameter parameter)
     {
+        VkFramework.SetCaptchaBasedOnConfig();
         Logger.Clear();
         switch (parameter)
         {

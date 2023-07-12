@@ -13,7 +13,7 @@ public class CaptchaHandler : ICaptchaSolver
 
     public string Solve(string url)
     {
-        Process.Start(new ProcessStartInfo {FileName = url, UseShellExecute = true});
+        Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
         var captcha = _input.GetStringInput($"Введите каптчу ({url})");
         return captcha;
     }

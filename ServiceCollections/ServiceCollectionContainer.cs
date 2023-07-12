@@ -1,4 +1,5 @@
 ﻿using nng_one.Extensions;
+using nng_one.Models;
 using nng.Helpers;
 using nng.Logging;
 using nng.Models;
@@ -20,7 +21,7 @@ public class ServiceCollectionContainer
     public Logger GlobalLogger => ServiceProvider.ForceGetService<Logger>();
     public VkFramework VkFramework => ServiceProvider.ForceGetService<VkFramework>();
     public CallbackHelper CallbackHelper => ServiceProvider.ForceGetService<CallbackHelper>();
-    public DataModel Data => ServiceProvider.ForceGetService<DataModel>();
+    public ApiData Data => ServiceProvider.ForceGetService<ApiData>();
 
     public static void Initialize(IServiceProvider provider)
     {

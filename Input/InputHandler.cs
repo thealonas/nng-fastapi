@@ -91,7 +91,7 @@ public class InputHandler
         var menuItems = Enum.GetValues(typeof(MainMenuItem)).Cast<MainMenuItem>().ToList();
         foreach (var menu in menuItems) userText.AppendLine($"{menuItems.IndexOf(menu) + 1}. {menu.GetMenuItem()}\n");
 
-        return (MainMenuItem) GetIntInput(userText.ToString(), 1, menuItems.Count, true);
+        return (MainMenuItem)GetIntInput(userText.ToString(), 1, menuItems.Count, true);
     }
 
     public int GetMenuInput(IEnumerable<string> menus, out bool returnBack)

@@ -1,9 +1,8 @@
-using System.Net.Http.Headers;
-using System.Text;
 using Newtonsoft.Json.Linq;
 using nng_one.FunctionParameters;
 using nng_one.Helpers;
 using nng_one.Interfaces;
+using nng_one.Models;
 using nng_one.ServiceCollections;
 using nng.Enums;
 using nng.Helpers;
@@ -24,7 +23,7 @@ namespace nng_one.Functions;
 public static class Misc
 {
     private static readonly VkFramework VkFramework = ServiceCollectionContainer.GetInstance().VkFramework;
-    private static readonly DataModel Data = ServiceCollectionContainer.GetInstance().Data;
+    private static readonly ApiData Data = ServiceCollectionContainer.GetInstance().Data;
     private static readonly Logger Logger = ServiceCollectionContainer.GetInstance().GlobalLogger;
     private static readonly CallbackHelper CallbackHelper = ServiceCollectionContainer.GetInstance().CallbackHelper;
 
@@ -128,7 +127,7 @@ public static class Misc
         try
         {
             if (post == null) return;
-            VkFramework.DeletePost(group, (long) post);
+            VkFramework.DeletePost(group, (long)post);
             Logger.Log($"Удалили пост {post} в сообществе {group}");
         }
         catch (VkApiException e)
@@ -147,7 +146,7 @@ public static class Misc
         switch (parameters.Type)
         {
             case MiscFunctionType.Stats:
-                ProcessStats(Data.GroupList.Select(x => new Group {Id = x}).ToList());
+                ProcessStats(Data.Groups.Select(x => new Group { Id = x.GroupId }).ToList());
                 break;
             case MiscFunctionType.RepostStories:
                 ProcessRepostStories(parameters.Groups ?? throw new InvalidOperationException(),
@@ -155,6 +154,12 @@ public static class Misc
                 break;
             case MiscFunctionType.RemoveBanned:
                 ProcessDeleteDogs(parameters.Groups ?? throw new InvalidOperationException());
+                break;
+            case MiscFunctionType.CreateCommunity:
+                CreateCommunity.Create(parameters.ShortName ?? throw new InvalidOperationException());
+                break;
+            case MiscFunctionType.Revoke:
+                Revoke.DoRevoke(parameters.Groups ?? throw new InvalidOperationException());
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -227,7 +232,7 @@ public static class Misc
                 VkFramework.Api.Stories.GetPhotoUploadServer(new GetPhotoUploadServerParams
                 {
                     LinkUrl = url,
-                    GroupId = (ulong) group.Id,
+                    GroupId = (ulong)group.Id,
                     AddToNews = true
                 }));
 
@@ -235,7 +240,9 @@ public static class Misc
 
             try
             {
-                var result = JObject.Parse(UploadFile(uploadResult.UploadUrl.ToString(), bytes, "jpg"));
+                var result = JObject.Parse(DownloadHelper.UploadFile(uploadResult.UploadUrl.ToString(),
+                    bytes, "jpg"));
+
                 var response = result["response"] ?? throw new NullReferenceException();
                 var serverUploadResult = response["upload_result"] ?? throw new NullReferenceException();
 
@@ -252,20 +259,8 @@ public static class Misc
         foreach (var server in toSave)
             VkFrameworkExecution.Execute(() => VkFramework.Api.Call("stories.save", new VkParameters
             {
-                {"upload_results", server}
+                { "upload_results", server }
             }));
-    }
-
-    private static string UploadFile(string serverUrl, byte[] file, string fileExtension)
-    {
-        using var client = new HttpClient();
-        var requestContent = new MultipartFormDataContent();
-        var content = new ByteArrayContent(file);
-        content.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
-        requestContent.Add(content, "file", $"file.{fileExtension}");
-
-        var response = client.PostAsync(serverUrl, requestContent).GetAwaiter().GetResult();
-        return Encoding.Default.GetString(response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult());
     }
 
     #endregion

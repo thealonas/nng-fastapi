@@ -1,14 +1,15 @@
 ﻿using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using nng_one.CaptchaSolver;
 using nng_one.Configs;
 using nng_one.Exceptions;
 using nng_one.Helpers;
+using nng_one.Models;
 using nng_one.ServiceCollections;
 using nng.Enums;
 using nng.Helpers;
 using nng.Logging;
-using nng.Models;
 using nng.Services;
 using nng.VkFrameworks;
 using Sentry;
@@ -29,6 +30,7 @@ public static class Program
     public static readonly Logger Logger = new(new ProgramInformationService(Version, false), "nng one");
     private static bool DebugMode { get; set; }
     private static bool SentryEnabled { get; set; }
+    private static bool AddedHeader { get; set; }
 
     private static void CommandLineProcessor(IEnumerable<string> list)
     {
@@ -40,11 +42,11 @@ public static class Program
 
     private static void Main(string[] args)
     {
-        if (args is {Length: > 0}) CommandLineProcessor(args);
+        if (args is { Length: > 0 }) CommandLineProcessor(args);
         var windows = OperatingSystem.IsWindows();
 
         var debug = DebugMode ? " debug" : string.Empty;
-        Console.Title = $"nng one v{Version.Major}.{Version.Minor}{debug}";
+        Console.Title = $"nng one v{Version.Major}.{Version.Minor}.{Version.Build}{debug}";
 
         Console.InputEncoding = windows ? Encoding.Unicode : Encoding.UTF8;
         Console.OutputEncoding = windows ? Encoding.Unicode : Encoding.Default;
@@ -91,7 +93,8 @@ public static class Program
         }
         catch (ConfigNotFoundException)
         {
-            config = new Config(string.Empty, string.Empty, string.Empty, false, true, true);
+            config = new Config(string.Empty, string.Empty, string.Empty,
+                false, true, true, string.Empty, string.Empty);
             ConfigProcessor.SaveConfig(config);
         }
 
@@ -125,9 +128,6 @@ public static class Program
             logger.Log($"Каптча, ожидаем {time.SecondsToWait} секунд");
         };
 
-        if (!config.CaptchaBypass) framework.SetCaptchaSolver(new CaptchaHandler());
-        else framework.ResetCaptchaSolver();
-
         if (UpdateHelper.IfUpdateNeed(out var version))
             Messages.Add(new Message(
                 $"Версия v{Version.Major}.{Version.Minor} устарела, пожалуйста, обновитесь до {version}",
@@ -135,10 +135,10 @@ public static class Program
 
         SentryEnabled = config.Sentry;
 
-        DataModel data;
+        ApiData data;
         try
         {
-            data = DataHelper.GetDataAsync(config.DataUrl).GetAwaiter().GetResult();
+            data = ApiHelper.GetApiData(config.GroupsUrl, config.BnndUrl);
         }
         catch (InvalidOperationException e)
         {
@@ -162,10 +162,26 @@ public static class Program
 
         ServiceCollectionContainer.Initialize(collectionBuilder.Build());
 
+        if (!config.CaptchaBypass)
+        {
+            framework.SetCaptchaSolver(new CaptchaHandler());
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(config.RuCaptchaToken) && !string.IsNullOrWhiteSpace(config.RuCaptchaToken))
+                framework.SetCaptchaSolver(new RuCaptchaSolver(config.RuCaptchaToken));
+            else
+                framework.ResetCaptchaSolver();
+        }
+
         var currentUser = framework.CurrentUser;
 
-        Messages.Add(new Message($"Добро пожаловать, {currentUser.FirstName} | Ваш ID: {currentUser.Id}",
-            LogType.InfoVersionShow));
+        if (!AddedHeader)
+        {
+            Messages.Add(new Message($"Добро пожаловать, {currentUser.FirstName} | Ваш ID: {currentUser.Id}",
+                LogType.InfoVersionShow));
+            AddedHeader = true;
+        }
 
         return true;
     }

@@ -88,13 +88,13 @@ public static class Block
         var workUsers = users.ToList();
         try
         {
-            var bannedUsers = VkFramework.GetBanned(group);
+            var bannedUsers = VkFramework.GetBanned(group).ToList();
             var data = VkFramework.GetGroupData(group);
-            var dict = workUsers.Where(bannedUser => bannedUsers.All(x => x.Id != bannedUser))
+            var dict = workUsers
+                .Where(bannedUser => bannedUsers.All(x => x.Id != bannedUser))
                 .ToDictionary(bannedUser => bannedUser, _ => false);
             foreach (var manager in data.Managers.Where(manager => workUsers.Contains(manager.Id)))
-                if (dict.ContainsKey(manager.Id)) dict[manager.Id] = true;
-                else dict.Add(manager.Id, true);
+                dict[manager.Id] = true;
             return dict;
         }
         catch (VkApiException e)

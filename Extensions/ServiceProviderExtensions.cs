@@ -7,7 +7,7 @@ public static class ServiceProviderExtensions
         service = default!;
         try
         {
-            service = (T) (provider.GetService(typeof(T)) ?? throw new InvalidOperationException());
+            service = (T)(provider.GetService(typeof(T)) ?? throw new InvalidOperationException());
             return true;
         }
         catch (Exception)
@@ -18,6 +18,6 @@ public static class ServiceProviderExtensions
 
     public static T ForceGetService<T>(this IServiceProvider provider)
     {
-        return (T) (provider.GetService(typeof(T)) ?? throw new InvalidOperationException());
+        return (T)(provider.GetService(typeof(T)) ?? throw new InvalidOperationException());
     }
 }
