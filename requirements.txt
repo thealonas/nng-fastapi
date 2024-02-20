@@ -1,0 +1,12 @@
+pydantic<3.0.0
+fastapi==0.109.2
+SQLAlchemy==2.0.27
+vk-api
+requests
+algoliasearch
+websockets
+sentry-sdk
+onepasswordconnectsdk
+uvicorn
+python-jose
+nng_sdk @ git+https://github.com/thealonas/nng-sdk@master
