@@ -85,3 +85,62 @@ class AuthService:
             raise InvalidCredentialError("Invalid credential")
 
         return TokenResponse(token=create_service_access_token(service_name))
+
+    async def authenticate_vk_user(
+        self, code: str, redirect_uri: str
+    ) -> VkAuthResponse:
+        """Authenticate a user via VK OAuth and return tokens."""
+        if not self.postgres:
+            raise AuthServiceError("Postgres not configured")
+
+        vk_client: VkClient = self.op_connect.get_vk_client()
+
+        response = requests.post(
+            "https://oauth.vk.com/access_token",
+            data={
+                "client_id": vk_client.client_id,
+                "client_secret": vk_client.client_secret,
+                "redirect_uri": redirect_uri,
+                "code": code,
+            },
+        )
+
+        vk_response: dict = response.json()
+
+        if "access_token" not in vk_response.keys():
+            raise InvalidVkResponseError("Invalid response from VK")
+
+        token: str = vk_response["access_token"]
+        user_id: int | None = VkManager.get_token_user_id(token)
+
+        if not user_id:
+            raise InvalidVkResponseError("Invalid response from VK")
+
+        try:
+            user: User = self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            raise UnauthorizedUserError("You don't have rights to authorize")
+
+        if not user.admin:
+            raise UnauthorizedUserError("You don't have rights to authorize")
+
+        return VkAuthResponse(
+            token=create_user_access_token(user.user_id),
+            user_id=user.user_id,
+            vk_token=token,
+        )
+
+    async def whoami(self, token: Optional[str]) -> WhoAmIResponse:
+        """Check if a token is valid and return user info."""
+        if not token:
+            return WhoAmIResponse(is_valid=False)
+
+        try:
+            is_valid, _ = check_user_auth(token)
+            if is_valid:
+                user_id: int = get_jwt_token_user_id(token)
+                return WhoAmIResponse(is_valid=True, user_id=user_id)
+        except Exception:
+            pass
+
+        return WhoAmIResponse(is_valid=False)
