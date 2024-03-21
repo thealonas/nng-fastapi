@@ -15,9 +15,7 @@ from starlette.responses import PlainTextResponse
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from auth.actions import ensure_websocket_authorization
-from routers.editor import (
-    safe_give_editor,
-)
+from routers.editor import safe_give_editor
 from utils.websocket_logger_manager import WebSocketLoggerManager
 
 router = APIRouter()
@@ -46,6 +44,7 @@ async def post(
     event: VkEvent,
     background_tasks: BackgroundTasks,
 ):
+    """Handle VK callback events."""
     logger = get_logger()
     op_group: OpCallbackGroup
 
@@ -111,6 +110,7 @@ async def post(
 
 
 async def try_close(socket: WebSocket):
+    """Try to close a websocket connection."""
     try:
         ws_manager.disconnect(socket)
         await socket.close()
@@ -122,6 +122,7 @@ async def try_close(socket: WebSocket):
 async def websocket_callback_logs(
     websocket: WebSocket, _: Annotated[bool, Depends(ensure_websocket_authorization)]
 ):
+    """Websocket endpoint for callback logs."""
     await ws_manager.connect(websocket)
 
     while True:
