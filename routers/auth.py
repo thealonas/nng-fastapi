@@ -1,22 +1,17 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends, Request
-from nng_sdk.one_password.models.vk_client import VkClient
-from nng_sdk.one_password.op_connect import OpConnect
 from nng_sdk.postgres.nng_postgres import NngPostgres
 from pydantic import BaseModel
 
-from auth.actions import (
-    verify_credential,
-    create_service_access_token,
-    create_user_access_token,
-    get_bearer_token,
-    check_user_auth,
-    get_jwt_token_user_id,
-    allowed_services,
-)
+from auth.actions import get_bearer_token
 from dependencies import get_db
-from utils.users_utils import authorize_user_by_code
+from services.auth_service import (
+    AuthService,
+    InvalidCredentialError,
+    InvalidVkResponseError,
+    UnauthorizedUserError,
+)
 
 router = APIRouter()
 
@@ -37,42 +32,43 @@ class WhoAmIResponse(BaseModel):
 
 
 @router.post("/auth", tags=["auth"], response_model=dict)
-def auth(credential_form: AuthForm):
-    if (
-        not verify_credential(credential_form.credential)
-        or credential_form.service_name not in allowed_services
-    ):
+async def auth(credential_form: AuthForm):
+    """Authenticate a service and return a token."""
+    service = AuthService()
+    try:
+        result = await service.authenticate_service(
+            credential_form.service_name, credential_form.credential
+        )
+        return {"token": result.token, "token_type": result.token_type}
+    except InvalidCredentialError:
         raise HTTPException(status_code=401, detail="Invalid credential")
-
-    return {
-        "token": create_service_access_token(credential_form.service_name),
-        "token_type": "bearer",
-    }
 
 
 @router.post("/vk_auth", tags=["auth"])
-def vk_auth(code_form: VkCodeForm, postgres: NngPostgres = Depends(get_db)):
-    vk_client: VkClient = OpConnect().get_vk_client()
-
-    token, user = authorize_user_by_code(
-        vk_client, code_form.code, code_form.original_redirect_uri, postgres
-    )
-
-    if not user.admin:
+async def vk_auth(code_form: VkCodeForm, postgres: NngPostgres = Depends(get_db)):
+    """Authenticate a user via VK OAuth."""
+    service = AuthService(postgres=postgres)
+    try:
+        result = await service.authenticate_vk_user(
+            code_form.code, code_form.original_redirect_uri
+        )
+        return {
+            "token": result.token,
+            "token_type": result.token_type,
+            "user_id": result.user_id,
+            "vk_token": result.vk_token,
+        }
+    except InvalidVkResponseError:
+        raise HTTPException(status_code=401, detail="Invalid response from VK")
+    except UnauthorizedUserError:
         raise HTTPException(
             status_code=403, detail="You don't have rights to authorize"
         )
 
-    return {
-        "token": create_user_access_token(user.user_id),
-        "token_type": "bearer",
-        "user_id": user.user_id,
-        "vk_token": token,
-    }
-
 
 @router.get("/auth/whoami", tags=["auth"], response_model=WhoAmIResponse)
-def is_valid(request: Request):
+async def is_valid(request: Request):
+    """Check if a token is valid and return user info."""
     token: str | None = get_bearer_token(request)
     if not token:
         raise HTTPException(
@@ -80,8 +76,5 @@ def is_valid(request: Request):
             detail="Could not find token, you need to put it into Authorization header",
         )
 
-    if check_user_auth(token):
-        user_id: int = get_jwt_token_user_id(token)
-        return WhoAmIResponse(is_valid=True, user_id=user_id)
-
-    return WhoAmIResponse(is_valid=False)
+    service = AuthService()
+    return await service.whoami(token)
