@@ -5,7 +5,8 @@ from nng_sdk.vk.vk_manager import VkManager
 from services.trust_service import TrustService
 
 
-def get_trust_service():
+async def get_trust_service():
+    """Get trust service dependency."""
     op = OpConnect()
     vk = VkManager()
     postgres = NngPostgres()
@@ -14,5 +15,6 @@ def get_trust_service():
     yield trust_service
 
 
-def get_db():
+async def get_db():
+    """Get database connection dependency."""
     yield NngPostgres()
