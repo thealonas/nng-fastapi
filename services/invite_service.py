@@ -54,3 +54,126 @@ class InviteService:
 
     def __init__(self, postgres: NngPostgres):
         self.postgres = postgres
+
+    def check_user(self, user_id: int, check_banned: bool = True) -> bool:
+        """Check if user exists and is not banned."""
+        try:
+            user: User = self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            return False
+        if check_banned:
+            return not user.has_active_violation()
+        return True
+
+    async def get_my_code(self, user_id: int) -> MyCodeResponse:
+        """Get invite code for a user."""
+        if not self.check_user(user_id):
+            raise InvalidUserError("Invalid or banned user")
+
+        return MyCodeResponse(code=generate_invite_for_user(user_id))
+
+    async def use_invite(
+        self, invite_string: str, user_id: int
+    ) -> tuple[UseInviteResponse, bool]:
+        """
+        Use an invite code.
+
+        Returns tuple of (response, success) where success indicates HTTP 200.
+        """
+        referral_id = check_invite(invite_string)
+        if not referral_id:
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.invalid_or_banned_referral
+                ),
+                False,
+            )
+
+        if not self.check_user(referral_id):
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.invalid_or_banned_referral
+                ),
+                False,
+            )
+
+        try:
+            user: User = self.postgres.users.get_user(user_id)
+            referral: User = self.postgres.users.get_user(referral_id)
+        except ItemNotFoundException:
+            return (
+                UseInviteResponse(response_type=UseInviteResponseType.invalid_user),
+                False,
+            )
+
+        if user.user_id == referral.user_id:
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.cannot_invite_yourself,
+                    referral_id=referral_id,
+                ),
+                False,
+            )
+
+        if user.has_active_violation():
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.banned_user,
+                    referral_id=referral_id,
+                ),
+                False,
+            )
+
+        if user.invited_by:
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.user_already_invited,
+                    referral_id=referral_id,
+                ),
+                False,
+            )
+
+        if referral.invited_by == user.user_id:
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.user_is_invited_by_you,
+                    referral_id=referral_id,
+                ),
+                False,
+            )
+
+        if not allowed_to_invite(user.trust_info.trust):
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.too_low_trust,
+                    referral_id=referral.user_id,
+                ),
+                False,
+            )
+
+        if not allowed_to_invite(referral.trust_info.trust):
+            return (
+                UseInviteResponse(
+                    response_type=UseInviteResponseType.too_low_trust_referral,
+                    referral_id=referral.user_id,
+                ),
+                False,
+            )
+
+        user.invited_by = referral.user_id
+        self.postgres.users.update_user(user)
+
+        return (
+            UseInviteResponse(
+                response_type=UseInviteResponseType.success,
+                referral_id=referral.user_id,
+            ),
+            True,
+        )
+
+    async def get_users_invited_by_user(self, user_id: int) -> List[User]:
+        """Get users invited by a specific user."""
+        if not self.check_user(user_id):
+            raise InvalidUserError("Invalid or banned user")
+
+        return self.postgres.users.get_invited_users(user_id)
