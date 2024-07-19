@@ -95,3 +95,123 @@ class RequestService:
             return self.postgres.requests.get_request(request_id)
         except ItemNotFoundException:
             raise RequestNotFoundError(f"Request {request_id} not found")
+
+    def _check_for_duplicates(
+        self, request_type: RequestType, user: User
+    ) -> None:
+        """Check for duplicate unblock requests."""
+        if request_type is not RequestType.unblock:
+            return
+
+        user_requests: List[Request] = self.postgres.requests.get_user_requests(
+            user.user_id
+        )
+
+        if user_requests:
+            for request in user_requests:
+                if (
+                    request.answered
+                    and request.request_type is RequestType.unblock
+                    and not request.decision
+                    and (datetime.date.today() - request.created_on)
+                    < datetime.timedelta(days=365)
+                ):
+                    raise DuplicateRequestError(ANOTHER_REQUEST_WAS_OPENED)
+
+    def _auto_deny_request(self, request: Request, user: User) -> Request:
+        """Auto deny request based on criteria."""
+        if request.request_type is not RequestType.unblock:
+            return request
+
+        violation: Violation
+
+        try:
+            violation = user.get_active_violation()
+        except RuntimeError:
+            return request
+
+        is_first_violation = (
+            len([i for i in user.violations if i.type == ViolationType.banned]) <= 1
+        )
+
+        more_than_year_ago: bool | None = (
+            True
+            if violation.date
+            and (datetime.date.today() - violation.date) > datetime.timedelta(days=365)
+            else False if violation.date else None
+        )
+
+        is_toxic = user.trust_info.toxicity > 75
+
+        answer: str = (
+            NOT_FIRST_VIOLATION
+            if not is_first_violation
+            else (
+                UNEXPIRED_VIOLATION
+                if (more_than_year_ago is False)
+                else TOO_TOXIC if is_toxic else ""
+            )
+        )
+
+        if not is_first_violation or (more_than_year_ago is False) or is_toxic:
+            request.answer = answer
+            request.answered = True
+            request.decision = False
+
+        return request
+
+    async def open_request(
+        self,
+        request_type: RequestType,
+        user_id: int,
+        user_message: str,
+        vk_comment: Optional[str] = None,
+    ) -> tuple[PutRequestResponse, int]:
+        """
+        Open a new request.
+
+        Returns tuple of (response, status_code).
+        """
+        try:
+            user: User = self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            return PutRequestResponse(response=USER_NOT_FOUND, success=False), 404
+
+        try:
+            self._check_for_duplicates(request_type, user)
+        except DuplicateRequestError:
+            return (
+                PutRequestResponse(response=ANOTHER_REQUEST_WAS_OPENED, success=False),
+                200,
+            )
+
+        request = Request(
+            request_type=request_type,
+            created_on=datetime.date.today(),
+            user_id=user_id,
+            user_message=user_message,
+            vk_comment=(
+                vk_comment if request_type is RequestType.complaint else None
+            ),
+            answer="",
+            decision=False,
+            answered=False,
+        )
+
+        request = self._auto_deny_request(request, user)
+
+        new_request: Request = self.postgres.requests.upload_or_update_request(request)
+
+        if new_request.answered:
+            await self.ws_manager.broadcast(
+                RequestWebsocketLog(
+                    request_id=new_request.request_id, send_to_user=new_request.user_id
+                )
+            )
+
+        return (
+            PutRequestResponse(
+                response="success", success=True, request_id=new_request.request_id
+            ),
+            200,
+        )
