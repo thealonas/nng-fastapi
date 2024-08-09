@@ -215,3 +215,82 @@ class RequestService:
             ),
             200,
         )
+
+    async def update_request_status(
+        self,
+        request_id: int,
+        answer: Optional[str],
+        decision: bool,
+        answered: bool,
+    ) -> tuple[Request, bool]:
+        """
+        Update a request's status.
+
+        Returns tuple of (request, was_originally_unanswered).
+        """
+        try:
+            request: Request = self.postgres.requests.get_request(request_id)
+        except ItemNotFoundException:
+            raise RequestNotFoundError(f"Request {request_id} not found")
+
+        if answer:
+            request.answer = answer
+
+        original_answered = request.answered
+
+        request.decision = decision
+        request.answered = answered
+
+        self.postgres.requests.upload_or_update_request(request)
+
+        return request, not original_answered
+
+    async def change_intruder(
+        self, request_id: int, new_intruder: int
+    ) -> Request:
+        """Change the intruder of a request."""
+        try:
+            request: Request = self.postgres.requests.get_request(request_id)
+        except ItemNotFoundException:
+            raise RequestNotFoundError(f"Request {request_id} not found")
+
+        if request.answered:
+            raise RequestAlreadyAnsweredError("Request already answered")
+
+        try:
+            self.postgres.users.get_user(new_intruder)
+        except ItemNotFoundException:
+            raise UserNotFoundError("User is not presented in DB")
+
+        request.intruder = new_intruder
+        self.postgres.requests.upload_or_update_request(request)
+
+        return request
+
+    async def try_ban_user_as_teal(
+        self,
+        intruder: int,
+        comment_link: str,
+        request_id: int,
+        complaint: int,
+    ) -> bool:
+        """Try to ban a user as teal priority."""
+        comment_info = get_comment_info_utility(comment_link, self.postgres)
+
+        violation = Violation(
+            type=ViolationType.banned,
+            group_id=comment_info.group_id or None,
+            priority=BanPriority.teal,
+            complaint=complaint,
+            request_ref=request_id,
+            active=True,
+            date=datetime.date.today(),
+        )
+
+        try:
+            self.postgres.users.add_violation(intruder, violation)
+        except NngPostgresException as e:
+            sentry_sdk.capture_exception(e)
+            return False
+        else:
+            return True
