@@ -11,8 +11,9 @@ router = APIRouter()
 
 
 @router.get("/stats", response_model=List[UserStats], tags=["stats"])
-def get_stats(
+async def get_stats(
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Get all user stats."""
     return postgres.user_stats.get_all_stats()
