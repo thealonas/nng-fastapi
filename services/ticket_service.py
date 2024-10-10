@@ -201,3 +201,91 @@ class TicketService:
                     ticket_id=ticket_id,
                 )
             )
+
+    async def add_message(
+        self, ticket_id: int, message: UploadMessage
+    ) -> None:
+        """Add a message to a ticket."""
+        try:
+            ticket: Ticket = self.postgres.tickets.get_ticket(ticket_id)
+        except ItemNotFoundException:
+            raise TicketNotFoundError(f"Ticket {ticket_id} not found")
+
+        if ticket.is_closed:
+            raise TicketClosedError("Ticket is closed")
+
+        self.postgres.tickets.add_message(
+            ticket_id, message.to_ticket_message(added=datetime.datetime.now())
+        )
+
+        if message.author_admin and ticket.status != TicketStatus.in_review:
+            ticket.status = TicketStatus.in_review
+            self.postgres.tickets.upload_or_update_ticket(ticket)
+
+        await self.ws_manager.broadcast(
+            TicketWebsocketLog(
+                log_type=(
+                    TicketLogType.admin_added_message
+                    if message.author_admin
+                    else TicketLogType.user_added_message
+                ),
+                ticket_id=ticket_id,
+            )
+        )
+
+    async def create_ticket(
+        self,
+        user_id: int,
+        ticket_type: TicketType,
+        text: str,
+        attachments: List[str],
+    ) -> Ticket:
+        """Create a new ticket."""
+        try:
+            self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            raise UserNotFoundError(f"User {user_id} not found")
+
+        return self.postgres.tickets.upload_or_update_ticket(
+            Ticket(
+                ticket_id=-1,
+                issuer=user_id,
+                status=TicketStatus.unreviewed,
+                type=ticket_type,
+                dialog=[
+                    TicketMessage(
+                        author_admin=False,
+                        message_text=text,
+                        attachments=attachments,
+                        added=datetime.datetime.now(),
+                    )
+                ],
+                opened=datetime.datetime.now(),
+                closed=None,
+            )
+        )
+
+    async def get_user_tickets(self, user_id: int) -> List[TicketShort]:
+        """Get tickets for a user."""
+        return [
+            TicketShort.from_ticket(i)
+            for i in self.postgres.tickets.get_user_tickets(user_id)
+            if i.status != TicketStatus.closed
+        ]
+
+    async def get_all_opened_tickets(self) -> List[TicketShort]:
+        """Get all opened tickets."""
+        try:
+            return [
+                TicketShort.from_ticket(i)
+                for i in self.postgres.tickets.get_opened_tickets()
+            ]
+        except ItemNotFoundException:
+            return []
+
+    async def get_ticket(self, ticket_id: int) -> Ticket:
+        """Get a ticket by ID."""
+        try:
+            return self.postgres.tickets.get_ticket(ticket_id)
+        except ItemNotFoundException:
+            raise TicketNotFoundError(f"Ticket {ticket_id} not found")
