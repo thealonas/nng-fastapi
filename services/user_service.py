@@ -261,3 +261,57 @@ class UserService:
 
         self.postgres.users.update_user(db_user)
         return db_user
+
+    async def update_trust(
+        self, user_id: int, trust_service: TrustService
+    ) -> None:
+        """Update a user's trust factor."""
+        try:
+            self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            raise UserNotFoundError(f"User {user_id} not found")
+
+        new_trust = trust_service.calculate_trust(user_id)
+        new_trust.last_updated = datetime.date.today()
+        self.postgres.users.update_user_trust_info(user_id, new_trust)
+
+    async def get_group_limit(self, user_id: int) -> GroupLimitOutput:
+        """Get the group limit for a user based on trust."""
+        try:
+            user: User = self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            raise UserNotFoundError(f"User {user_id} not found")
+
+        trust: int = user.trust_info.trust
+        return GroupLimitOutput(
+            max_groups=get_groups_restriction(trust), user_id=user.user_id
+        )
+
+    async def add_violation(
+        self, user_id: int, violation: Violation
+    ) -> User:
+        """Add a violation to a user."""
+        try:
+            db_user: User = self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            raise UserNotFoundError(f"User {user_id} not found")
+
+        try:
+            self.postgres.users.add_violation(user_id, violation)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            raise ViolationAddError("Error while adding violation")
+
+        return db_user
+
+    async def unban_user(self, user_id: int) -> User:
+        """Check if user can be unbanned (has active violation)."""
+        try:
+            db_user: User = self.postgres.users.get_user(user_id)
+        except ItemNotFoundException:
+            raise UserNotFoundError(f"User {user_id} not found")
+
+        if not db_user.has_active_violation():
+            raise UserNotBannedError(f"User {user_id} is not banned")
+
+        return db_user
