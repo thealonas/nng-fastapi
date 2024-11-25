@@ -16,13 +16,14 @@ from nng_sdk.pydantic_models.user import (
 from nng_sdk.vk.actions import get_user_data
 from nng_sdk.vk.vk_manager import VkManager
 
-import routers.utils
 from services.trust_service import TrustService
+from services.utils_service import get_comment_info_utility
 
 logger = get_logger()
 
 
 def update_trust(user_id: int, postgres: NngPostgres, trust_service: TrustService):
+    """Update a user's trust factor."""
     try:
         new_trust = trust_service.calculate_trust(user_id)
     except RuntimeError:
@@ -35,6 +36,7 @@ def update_trust(user_id: int, postgres: NngPostgres, trust_service: TrustServic
 def create_default_user(
     user_id: int, postgres: NngPostgres, username: str | None = None
 ):
+    """Create a default user with the given ID."""
     if not username:
         try:
             user_vk_data = get_user_data(user_id)
@@ -66,9 +68,8 @@ def try_ban_user_as_teal(
     complaint: int,
     postgres: NngPostgres,
 ) -> bool:
-    comment_info: routers.utils.GetCommentInfoResponse = (
-        routers.utils.get_comment_info_utility(comment_link, postgres)
-    )
+    """Try to ban a user with teal priority."""
+    comment_info = get_comment_info_utility(comment_link, postgres)
 
     violation = Violation(
         type=ViolationType.banned,
@@ -95,6 +96,7 @@ def authorize_user_by_code(
     redirect_uri: str,
     postgres: NngPostgres,
 ):
+    """Authorize a user by VK OAuth code."""
     response = requests.post(
         "https://oauth.vk.com/access_token",
         data={
