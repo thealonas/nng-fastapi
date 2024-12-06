@@ -1,12 +1,8 @@
 import datetime
 from typing import List, Optional, Annotated
 
-import sentry_sdk
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from nng_sdk.one_password.op_connect import OpConnect
-from nng_sdk.postgres.exceptions import (
-    ItemNotFoundException,
-)
 from nng_sdk.postgres.nng_postgres import NngPostgres
 from nng_sdk.pydantic_models.user import (
     Violation,
@@ -14,14 +10,8 @@ from nng_sdk.pydantic_models.user import (
     ViolationType,
     BanPriority,
 )
-from nng_sdk.vk.actions import (
-    get_groups_data,
-    GroupDataResponse,
-    edit_manager,
-)
 from nng_sdk.vk.vk_manager import VkManager
 from pydantic import BaseModel
-from vk_api import VkApiError
 
 from auth.actions import (
     ensure_authorization,
@@ -30,8 +20,16 @@ from auth.actions import (
 from dependencies import get_db, get_trust_service
 from services.ban_service import BanService
 from services.trust_service import TrustService
-from utils.trust_restrictions import get_groups_restriction
-from utils.users_utils import update_trust, create_default_user
+from services.user_service import (
+    UserService,
+    UserNotFoundError,
+    UserAlreadyExistsError,
+    UserNotInGroupError,
+    GroupNotFoundError,
+    VkOperationError,
+    ViolationAddError,
+    UserNotBannedError,
+)
 
 
 class PostUserGroup(BaseModel):
@@ -76,66 +74,71 @@ router = APIRouter()
 
 
 @router.get("/users/bnnd", response_model=List[BannedOutput], tags=["users", "public"])
-def get_banned_users(postgres: NngPostgres = Depends(get_db)):
-    users: list[User] = postgres.users.get_banned_users()
-    for user in users:
-        new_user_violations = [
-            i for i in user.violations if i.type == ViolationType.banned
-        ]
-        user.violations = new_user_violations
-
-    return [i for i in users if i.has_active_violation()]
+async def get_banned_users(postgres: NngPostgres = Depends(get_db)):
+    """Get all banned users with active violations."""
+    service = UserService(postgres)
+    return await service.get_banned_users()
 
 
 @router.get("/users/thx", response_model=list[ThxOutput], tags=["users", "public"])
-def get_thx(postgres: NngPostgres = Depends(get_db)):
-    return postgres.users.get_thx_users()
+async def get_thx(postgres: NngPostgres = Depends(get_db)):
+    """Get all users eligible for thanks."""
+    service = UserService(postgres)
+    return await service.get_thx_users()
 
 
 @router.get("/users/user/{user_id}", response_model=User, tags=["users"])
-def get_user(
+async def get_user(
     user_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Get a user by ID."""
+    service = UserService(postgres)
     try:
-        user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        return await service.get_user(user_id)
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-    else:
-        return user
 
 
 @router.get("/users/search", response_model=List[User], tags=["users"])
-def search_users(
+async def search_users(
     query: str,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
-    if not query:
-        return []
+    """Search users by query."""
+    service = UserService(postgres)
+    return await service.search_users(query)
 
-    return postgres.users.search_users(query)
+
+async def _update_trust_task(
+    user_id: int, postgres: NngPostgres, trust_service: TrustService
+):
+    """Background task to update user trust."""
+    service = UserService(postgres)
+    await service.update_trust(user_id, trust_service)
 
 
 @router.put("/users/add", tags=["users"])
-def put_user(
+async def put_user(
     user: UserPut,
     background_tasks: BackgroundTasks,
     _: Annotated[bool, Depends(ensure_authorization)],
     trust_service: TrustService = Depends(get_trust_service),
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Create a new user."""
+    service = UserService(postgres)
     try:
-        postgres.users.get_user(user.user_id)
-    except ItemNotFoundException:
-        pass
-    else:
+        await service.create_user(user.user_id, user.name)
+    except UserAlreadyExistsError:
         raise HTTPException(status_code=409, detail="User already exists")
+    except VkOperationError:
+        raise HTTPException(status_code=406, detail="User doesn't exist in VK")
 
-    create_default_user(user.user_id, postgres, username=user.name)
     background_tasks.add_task(
-        update_trust,
+        _update_trust_task,
         user.user_id,
         postgres,
         trust_service,
@@ -145,76 +148,49 @@ def put_user(
 
 
 @router.post("/users/fire/{user_id}", tags=["users"])
-def fire_user(
+async def fire_user(
     user_id: int,
     fire_data: PostUserGroup,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Fire a user from a group."""
+    service = UserService(postgres)
     try:
-        user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        message = await service.fire_user(user_id, fire_data.group_id)
+        return {"detail": message}
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-
-    if not user.groups or fire_data.group_id not in user.groups:
+    except UserNotInGroupError:
         raise HTTPException(status_code=400, detail="User is not in this group")
-
-    group_data = get_groups_data([fire_data.group_id])
-    if fire_data.group_id not in group_data.keys():
+    except GroupNotFoundError:
         raise HTTPException(status_code=400, detail="Group not found")
-
-    group: GroupDataResponse = group_data[fire_data.group_id]
-    if user.user_id not in [i["id"] for i in group.managers]:
-        user.groups.remove(fire_data.group_id)
-        postgres.users.update_user(user)
-        return {"detail": "User fired only in db"}
-
-    try:
-        edit_manager(group.group_id, user.user_id, None)
-    except VkApiError as e:
-        sentry_sdk.capture_exception(e)
+    except VkOperationError:
         raise HTTPException(status_code=500, detail="Error while firing user")
-
-    user.groups.remove(fire_data.group_id)
-    postgres.users.update_user(user)
-    return {"detail": "User fired successfully"}
 
 
 @router.post("/users/restore/{user_id}", tags=["users"])
-def restore_user(
+async def restore_user(
     user_id: int,
     restore_data: PostUserGroup,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Restore a user to a group."""
+    service = UserService(postgres)
     try:
-        user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        message = await service.restore_user(user_id, restore_data.group_id)
+        return {"detail": message}
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-
-    group_data = get_groups_data([restore_data.group_id])
-    if restore_data.group_id not in group_data.keys():
+    except GroupNotFoundError:
         raise HTTPException(status_code=400, detail="Group not found")
-
-    group: GroupDataResponse = group_data[restore_data.group_id]
-    if user.user_id in [i["id"] for i in group.managers]:
-        user.groups.append(restore_data.group_id)
-        postgres.users.update_user(user)
-        return {"detail": "User restored only in db"}
-
-    try:
-        edit_manager(group.group_id, user.user_id, "editor")
-    except VkApiError as e:
-        sentry_sdk.capture_exception(e)
+    except VkOperationError:
         raise HTTPException(status_code=500, detail="Error while restoring user")
-
-    user.groups.append(restore_data.group_id)
-    postgres.users.update_user(user)
-    return {"detail": "User restored successfully"}
 
 
 @router.post("/users/update/{user_id}", tags=["users"])
-def post_user(
+async def post_user(
     user_id: int,
     user: UserPost,
     background_tasks: BackgroundTasks,
@@ -222,34 +198,24 @@ def post_user(
     trust_service: TrustService = Depends(get_trust_service),
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Update a user's information."""
+    service = UserService(postgres)
     try:
-        db_user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        groups = user.groups if user.groups or user.groups == [] else None
+        await service.update_user(
+            user_id,
+            name=user.name,
+            admin=user.admin,
+            groups=groups if groups is not None else ([] if user.groups == [] else None),
+            activism=user.activism,
+            donate=user.donate,
+        )
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.name:
-        db_user.name = user.name
-
-    if user.admin is not None:
-        db_user.admin = user.admin
-
-    if user.activism is not None:
-        db_user.trust_info.activism = user.activism
-
-    if user.donate is not None:
-        db_user.trust_info.donate = user.donate
-
-    if user.groups or user.groups == []:
-        if not user.groups:
-            db_user.groups = []
-        else:
-            db_user.groups = user.groups
-
-    postgres.users.update_user(db_user)
-
     background_tasks.add_task(
-        update_trust,
-        db_user.user_id,
+        _update_trust_task,
+        user_id,
         postgres,
         trust_service,
     )
@@ -258,38 +224,38 @@ def post_user(
 
 
 @router.get("/users/calculate_trust/{user_id}", tags=["users"])
-def calculate_trust(
+async def calculate_trust(
     user_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
     trust_service: TrustService = Depends(get_trust_service),
 ):
+    """Calculate and update a user's trust factor."""
+    service = UserService(postgres)
     try:
-        postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        await service.update_trust(user_id, trust_service)
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
 
-    update_trust(user_id, postgres, trust_service)
     return {"detail": "User's trust has been updated"}
 
 
 @router.get("/users/group_limit/{user_id}", tags=["users"])
-def get_group_limit(
+async def get_group_limit(
     user_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Get the group limit for a user based on trust."""
+    service = UserService(postgres)
     try:
-        user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        return await service.get_group_limit(user_id)
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-
-    trust: int = user.trust_info.trust
-    return {"max_groups": get_groups_restriction(trust), "user_id": user.user_id}
 
 
 @router.post("/users/add_violation/{user_id}", tags=["users"])
-def add_violation(
+async def add_violation(
     user_id: int,
     violation: Violation,
     background_tasks: BackgroundTasks,
@@ -298,39 +264,40 @@ def add_violation(
     postgres: NngPostgres = Depends(get_db),
     trust_service: TrustService = Depends(get_trust_service),
 ):
+    """Add a violation to a user."""
+    service = UserService(postgres)
     try:
-        db_user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        db_user = await service.add_violation(user_id, violation)
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-
-    try:
-        postgres.users.add_violation(user_id, violation)
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
+    except ViolationAddError:
         raise HTTPException(status_code=500, detail="Error while adding violation")
 
     ban_service = BanService(postgres, VkManager(), OpConnect())
     if violation.type == ViolationType.banned and violation.active and immediate:
         background_tasks.add_task(ban_service.ban_user_in_groups, user_id)
     else:
-        background_tasks.add_task(update_trust, user_id, postgres, trust_service)
+        background_tasks.add_task(
+            _update_trust_task, user_id, postgres, trust_service
+        )
 
     return {"detail": f"Violation was added to user {db_user.user_id}"}
 
 
 @router.post("/users/unban/{user_id}", tags=["users"])
-def unban_user(
+async def unban_user(
     user_id: int,
     background_tasks: BackgroundTasks,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
 ):
+    """Unban a user."""
+    service = UserService(postgres)
     try:
-        db_user: User = postgres.users.get_user(user_id)
-    except ItemNotFoundException:
+        db_user = await service.unban_user(user_id)
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
-
-    if not db_user.has_active_violation():
+    except UserNotBannedError:
         raise HTTPException(status_code=400, detail="User is not banned")
 
     ban_service = BanService(postgres, VkManager(), OpConnect())
