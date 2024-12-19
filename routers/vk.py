@@ -19,6 +19,7 @@ async def call_vk_method(
     data: PostCallMethod,
     _: Annotated[bool, Depends(ensure_user_authorization)],
 ):
+    """Proxy a VK API method call."""
     response = requests.post(
         f"https://api.vk.com/method/{data.method}", data.params
     ).json()
