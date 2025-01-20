@@ -20,6 +20,8 @@ import routers.users
 import routers.utils
 import routers.vk
 import routers.watchdog
+import routers.export
+import routers.health
 import routers.comments
 
 from background_tasks.expired_users import expired_users_task
@@ -131,6 +133,8 @@ app.include_router(routers.requests.router)
 app.include_router(routers.editor.router)
 app.include_router(routers.tickets.router)
 app.include_router(routers.callback.router)
+app.include_router(routers.export.router)
+app.include_router(routers.health.router)
 app.include_router(routers.auth.router)
 app.include_router(routers.utils.router)
 app.include_router(routers.vk.router)
