@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from nng_sdk.logger import get_logger
 from nng_sdk.one_password.op_connect import OpConnect
 from nng_sdk.postgres.nng_postgres import NngPostgres
+from middleware.rate_limit_middleware import RateLimitMiddleware
+from middleware.logging_middleware import LoggingMiddleware
 from nng_sdk.vk.vk_manager import VkManager
 from sqlalchemy.exc import OperationalError
 from starlette.middleware.cors import CORSMiddleware
@@ -123,6 +125,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=methods,
     allow_headers=headers,
+)
+
+app.add_middleware(
+    RateLimitMiddleware,
+)
+
+app.add_middleware(
+    LoggingMiddleware,
 )
 
 app.include_router(routers.users.router)
