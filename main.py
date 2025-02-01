@@ -22,6 +22,7 @@ import routers.users
 import routers.utils
 import routers.vk
 import routers.watchdog
+import routers.admin
 import routers.export
 import routers.health
 import routers.comments
@@ -135,6 +136,7 @@ app.add_middleware(
     LoggingMiddleware,
 )
 
+app.include_router(routers.admin.router)
 app.include_router(routers.users.router)
 app.include_router(routers.groups.router)
 app.include_router(routers.watchdog.router)
