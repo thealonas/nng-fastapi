@@ -20,6 +20,7 @@ import routers.requests
 import routers.tickets
 import routers.users
 import routers.features
+import routers.reports
 import routers.utils
 import routers.vk
 import routers.watchdog
@@ -151,6 +152,7 @@ app.include_router(routers.features.router)
 app.include_router(routers.health.router)
 app.include_router(routers.auth.router)
 app.include_router(routers.utils.router)
+app.include_router(routers.reports.router)
 app.include_router(routers.vk.router)
 app.include_router(routers.comments.router)
 
