@@ -209,3 +209,104 @@ class EventBus:
         )
         asyncio.create_task(self.publish(event))
         return event
+
+    def on(self, event_type: str, priority: int = 0):
+        def decorator(func: Callable) -> Callable:
+            self.subscribe([event_type], func, priority)
+            return func
+
+        return decorator
+
+    def get_event_history(
+            self,
+            event_type: str = None,
+            limit: int = 100
+    ) -> List[Event]:
+        events = self._event_history.copy()
+
+        if event_type:
+            events = [e for e in events if e.event_type == event_type]
+
+        events.reverse()
+        return events[:limit]
+
+    def get_result_history(
+            self,
+            event_id: str = None,
+            handler_id: str = None,
+            success_only: bool = False,
+            limit: int = 100
+    ) -> List[EventResult]:
+        results = self._result_history.copy()
+
+        if event_id:
+            results = [r for r in results if r.event_id == event_id]
+
+        if handler_id:
+            results = [r for r in results if r.handler_id == handler_id]
+
+        if success_only:
+            results = [r for r in results if r.success]
+
+        results.reverse()
+        return results[:limit]
+
+    def get_handlers(self, event_type: str = None) -> List[Dict[str, Any]]:
+        with self._lock:
+            if event_type:
+                handlers = self._handlers.get(event_type, [])
+            else:
+                seen = set()
+                handlers = []
+                for handler_list in self._handlers.values():
+                    for handler in handler_list:
+                        if handler.handler_id not in seen:
+                            handlers.append(handler)
+                            seen.add(handler.handler_id)
+
+            return [
+                {
+                    "handler_id": h.handler_id,
+                    "event_types": list(h.event_types),
+                    "priority": h.priority,
+                    "async": h.async_handler
+                }
+                for h in handlers
+            ]
+
+    def get_stats(self) -> Dict[str, Any]:
+        with self._lock:
+            event_type_counts = {}
+            for event in self._event_history:
+                event_type_counts[event.event_type] = event_type_counts.get(event.event_type, 0) + 1
+
+            success_count = len([r for r in self._result_history if r.success])
+            failure_count = len([r for r in self._result_history if not r.success])
+
+            return {
+                "total_handlers": sum(len(h) for h in self._handlers.values()),
+                "event_types": len(self._handlers),
+                "events_published": len(self._event_history),
+                "handlers_invoked": len(self._result_history),
+                "success_rate": round(success_count / (success_count + failure_count) * 100, 2) if (
+                                                                                                               success_count + failure_count) > 0 else 0,
+                "event_type_distribution": event_type_counts
+            }
+
+    def clear_history(self) -> int:
+        event_count = len(self._event_history)
+        result_count = len(self._result_history)
+        self._event_history.clear()
+        self._result_history.clear()
+        return event_count + result_count
+
+
+event_bus = EventBus()
+
+
+def subscribe(event_types: List[str], priority: int = 0):
+    def decorator(func: Callable) -> Callable:
+        event_bus.subscribe(event_types, func, priority)
+        return func
+
+    return decorator
