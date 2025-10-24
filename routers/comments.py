@@ -5,12 +5,13 @@ from nng_sdk.postgres.nng_postgres import NngPostgres
 from nng_sdk.pydantic_models.comment import Comment
 
 from auth.actions import ensure_user_authorization
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
 from services.comment_service import (
     CommentService,
     CommentNotFoundError,
     UserNotFoundError,
 )
+from utils.response import ResponseFormatter
 
 router = APIRouter()
 
@@ -20,6 +21,7 @@ async def get_single_comment(
     comment_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get a comment by ID."""
     service = CommentService(postgres)
@@ -34,6 +36,7 @@ async def get_user_comments(
     user_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get all comments by a user."""
     service = CommentService(postgres)
