@@ -8,11 +8,12 @@ from nng_sdk.postgres.nng_postgres import NngPostgres
 from pydantic import BaseModel
 
 from auth.actions import ensure_authorization, ensure_user_authorization
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
 from services.utils_service import (
     get_comment_info_utility,
     GetCommentInfoResponse,
 )
+from utils.response import ResponseFormatter
 
 router = APIRouter()
 
@@ -34,6 +35,7 @@ async def get_comment_info(
     post: GetCommentInfoPost,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get comment info from a VK link."""
     return get_comment_info_utility(post.comment_link, postgres)
@@ -43,6 +45,7 @@ async def get_comment_info(
 async def get_updates(
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get update counts for tickets, watchdog, and requests."""
     tickets = len(postgres.tickets.get_opened_tickets())

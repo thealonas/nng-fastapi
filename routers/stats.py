@@ -5,7 +5,8 @@ from nng_sdk.postgres.nng_postgres import NngPostgres
 from nng_sdk.pydantic_models.user_stats import UserStats
 
 from auth.actions import ensure_authorization
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
+from utils.response import ResponseFormatter
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ router = APIRouter()
 async def get_stats(
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get all user stats."""
     return postgres.user_stats.get_all_stats()

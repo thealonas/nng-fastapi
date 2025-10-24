@@ -14,7 +14,7 @@ from auth.actions import (
     ensure_user_authorization,
     ensure_websocket_authorization,
 )
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
 from nng_sdk.postgres.nng_postgres import NngPostgres
 from services.watchdog_service import (
     WatchdogService,
@@ -23,6 +23,7 @@ from services.watchdog_service import (
     WatchdogWebsocketLog,
 )
 from utils.websocket_logger_manager import WebSocketLoggerManager
+from utils.response import ResponseFormatter
 
 router = APIRouter()
 watchdog_socket_manager = WebSocketLoggerManager()
@@ -49,6 +50,7 @@ class PutWatchdog(BaseModel):
 async def get_watchdog_logs(
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get all unreviewed watchdog logs."""
     service = WatchdogService(postgres, watchdog_socket_manager)
@@ -60,6 +62,7 @@ async def get_watchdog_by_id(
     watchdog_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get a watchdog log by ID."""
     service = WatchdogService(postgres, watchdog_socket_manager)
@@ -90,6 +93,7 @@ async def post_watchdog_additional_info(
     background_tasks: BackgroundTasks,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Update a watchdog log with additional info."""
     service = WatchdogService(postgres, watchdog_socket_manager)
@@ -122,6 +126,7 @@ async def add_watchdog_log(
     watchdog: PutWatchdog,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Add a new watchdog log."""
     service = WatchdogService(postgres, watchdog_socket_manager)
@@ -140,6 +145,7 @@ async def notify_user(
     log: WatchdogWebsocketLog,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Send notification to user via websocket."""
     service = WatchdogService(postgres, watchdog_socket_manager)
