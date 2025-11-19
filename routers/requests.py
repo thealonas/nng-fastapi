@@ -15,7 +15,7 @@ from auth.actions import (
     ensure_user_authorization,
     ensure_websocket_authorization,
 )
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
 from services.ban_service import BanService
 from services.request_service import (
     RequestService,
@@ -26,6 +26,7 @@ from services.request_service import (
     PutRequestResponse,
 )
 from utils.websocket_logger_manager import WebSocketLoggerManager
+from utils.response import ResponseFormatter
 
 
 class PutRequest(BaseModel):
@@ -54,6 +55,7 @@ socket_manager: WebSocketLoggerManager = WebSocketLoggerManager()
 async def get_requests(
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get all unanswered requests."""
     service = RequestService(postgres, socket_manager)
@@ -65,6 +67,7 @@ async def get_user_requests(
     user_id: int,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get all requests for a user."""
     service = RequestService(postgres, socket_manager)
@@ -77,6 +80,7 @@ async def open_request(
     request_data: PutRequest,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Open a new request."""
     service = RequestService(postgres, socket_manager)
@@ -95,6 +99,7 @@ async def get_request(
     request_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get a request by ID."""
     service = RequestService(postgres, socket_manager)
@@ -111,6 +116,7 @@ async def change_request_status(
     background_tasks: BackgroundTasks,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Update a request's status."""
     service = RequestService(postgres, socket_manager)
@@ -165,6 +171,7 @@ async def change_intruder(
     request_id: int,
     _: Annotated[bool, Depends(ensure_user_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Change the intruder of a request."""
     service = RequestService(postgres, socket_manager)
