@@ -18,3 +18,5 @@ class GroupDataStorage:
 
     def update_groups(self, groups: dict[int, GroupDataResponse]):
         self.groups = groups.copy()
+        for group_id, group_data in groups.items():
+            self.groups[group_id] = group_data

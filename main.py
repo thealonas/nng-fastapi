@@ -47,32 +47,27 @@ class BackgroundRunner:
         self.back_logger.info("запускаю бэкграунд таски...")
         postgres = await try_get_database_or_wait()
 
-        asyncio.get_event_loop().run_in_executor(
-            None, self.back_tasks_sequence, postgres, VkManager(), OpConnect()
+        asyncio.create_task(
+            self.back_tasks_sequence(postgres, VkManager(), OpConnect())
         )
 
         self.back_logger.info("готово")
 
     @staticmethod
-    def back_tasks_sequence(
+    async def back_tasks_sequence(
         postgres: NngPostgres, vk_manager: VkManager, op: OpConnect
     ):
-        update_group_cache(postgres)
-        expired_users_task(postgres)
+        await update_group_cache(postgres)
+        await asyncio.to_thread(expired_users_task, postgres)
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        asyncio.get_event_loop().run_in_executor(None, update_group_stats, postgres)
-
-        asyncio.get_event_loop().run_in_executor(
-            None, update_all_trust_factors, vk_manager, postgres, op
-        )
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, update_group_stats, postgres)
+        loop.run_in_executor(None, update_all_trust_factors, vk_manager, postgres, op)
 
         while True:
-            asyncio.run(asyncio.sleep(60 * 60 * 24))
-            update_group_cache(postgres)
-            expired_users_task(postgres)
+            await asyncio.sleep(60 * 60 * 24)
+            await update_group_cache(postgres)
+            await asyncio.to_thread(expired_users_task, postgres)
 
 
 async def try_get_database_or_wait(max_tries: int = 5) -> NngPostgres:
