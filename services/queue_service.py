@@ -35,7 +35,9 @@ class QueuedTask:
     args: tuple = field(compare=False, default_factory=tuple)
     kwargs: Dict[str, Any] = field(compare=False, default_factory=dict)
     status: TaskStatus = field(compare=False, default=TaskStatus.PENDING)
-    created_at: datetime.datetime = field(compare=False, default_factory=datetime.datetime.now)
+    created_at: datetime.datetime = field(
+        compare=False, default_factory=datetime.datetime.now
+    )
     started_at: Optional[datetime.datetime] = field(compare=False, default=None)
     completed_at: Optional[datetime.datetime] = field(compare=False, default=None)
     result: Any = field(compare=False, default=None)
@@ -76,23 +78,23 @@ class TaskQueue:
         *args,
         priority: TaskPriority = TaskPriority.NORMAL,
         max_retries: int = 3,
-        **kwargs
+        **kwargs,
     ) -> str:
         with self._lock:
             task_id = self._generate_task_id()
-            
+
             task = QueuedTask(
                 priority=-priority.value,
                 task_id=task_id,
                 func=func,
                 args=args,
                 kwargs=kwargs,
-                max_retries=max_retries
+                max_retries=max_retries,
             )
-            
+
             heapq.heappush(self._queue, task)
             self._tasks[task_id] = task
-            
+
             return task_id
 
     def dequeue(self) -> Optional[QueuedTask]:
@@ -110,18 +112,18 @@ class TaskQueue:
         task = self._tasks.get(task_id)
         if not task:
             return None
-        
+
         duration = None
         if task.started_at and task.completed_at:
             duration = (task.completed_at - task.started_at).total_seconds() * 1000
-        
+
         return TaskResult(
             task_id=task_id,
             status=task.status,
             result=task.result,
             error=task.error,
             duration_ms=duration,
-            retries=task.retries
+            retries=task.retries,
         )
 
     def cancel_task(self, task_id: str) -> bool:
@@ -142,14 +144,16 @@ class TaskQueue:
             for task in self._tasks.values():
                 status = task.status.value
                 status_counts[status] = status_counts.get(status, 0) + 1
-            
+
             return {
                 "name": self.name,
                 "total_tasks": len(self._tasks),
-                "pending": len([t for t in self._queue if t.status == TaskStatus.PENDING]),
+                "pending": len(
+                    [t for t in self._queue if t.status == TaskStatus.PENDING]
+                ),
                 "active_workers": self._active_workers,
                 "max_workers": self.max_workers,
-                "status_distribution": status_counts
+                "status_distribution": status_counts,
             }
 
     def clear(self) -> int:
@@ -170,14 +174,10 @@ class QueueService:
             self._queues[name] = TaskQueue(name)
         return self._queues[name]
 
-    def create_queue(
-        self,
-        name: str,
-        max_workers: int = 5
-    ) -> TaskQueue:
+    def create_queue(self, name: str, max_workers: int = 5) -> TaskQueue:
         if name in self._queues:
             return self._queues[name]
-        
+
         queue = TaskQueue(name, max_workers)
         self._queues[name] = queue
         return queue
@@ -185,7 +185,7 @@ class QueueService:
     def delete_queue(self, name: str) -> bool:
         if name == "default":
             return False
-        
+
         if name in self._queues:
             del self._queues[name]
             return True
@@ -197,33 +197,29 @@ class QueueService:
         *args,
         queue_name: str = "default",
         priority: TaskPriority = TaskPriority.NORMAL,
-        **kwargs
+        **kwargs,
     ) -> str:
         queue = self.get_queue(queue_name)
         return queue.enqueue(func, *args, priority=priority, **kwargs)
 
-    async def process_task(
-        self,
-        task: QueuedTask,
-        queue: TaskQueue
-    ) -> TaskResult:
+    async def process_task(self, task: QueuedTask, queue: TaskQueue) -> TaskResult:
         task.status = TaskStatus.RUNNING
         task.started_at = datetime.datetime.now()
-        
+
         try:
             if asyncio.iscoroutinefunction(task.func):
                 result = await task.func(*task.args, **task.kwargs)
             else:
                 result = task.func(*task.args, **task.kwargs)
-            
+
             task.result = result
             task.status = TaskStatus.COMPLETED
             task.completed_at = datetime.datetime.now()
-            
+
         except Exception as e:
             task.error = str(e)
             task.retries += 1
-            
+
             if task.retries < task.max_retries:
                 task.status = TaskStatus.PENDING
                 with queue._lock:
@@ -231,39 +227,34 @@ class QueueService:
             else:
                 task.status = TaskStatus.FAILED
                 task.completed_at = datetime.datetime.now()
-        
+
         return queue.get_task_result(task.task_id)
 
     async def process_queue(
-        self,
-        queue_name: str = "default",
-        max_tasks: int = None
+        self, queue_name: str = "default", max_tasks: int = None
     ) -> List[TaskResult]:
         queue = self.get_queue(queue_name)
         results = []
         processed = 0
-        
+
         while True:
             task = queue.dequeue()
             if not task:
                 break
-            
+
             result = await self.process_task(task, queue)
             results.append(result)
             processed += 1
-            
+
             if max_tasks and processed >= max_tasks:
                 break
-        
+
         return results
 
     def get_all_stats(self) -> Dict[str, Any]:
         return {
-            "queues": {
-                name: queue.get_stats()
-                for name, queue in self._queues.items()
-            },
-            "total_queues": len(self._queues)
+            "queues": {name: queue.get_stats() for name, queue in self._queues.items()},
+            "total_queues": len(self._queues),
         }
 
     def list_queues(self) -> List[str]:
@@ -278,12 +269,8 @@ def enqueue_task(
     *args,
     queue: str = "default",
     priority: TaskPriority = TaskPriority.NORMAL,
-    **kwargs
+    **kwargs,
 ) -> str:
     return queue_service.enqueue(
-        func,
-        *args,
-        queue_name=queue,
-        priority=priority,
-        **kwargs
+        func, *args, queue_name=queue, priority=priority, **kwargs
     )

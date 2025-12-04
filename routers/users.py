@@ -86,20 +86,22 @@ async def get_banned_users(
     """Get all banned users with active violations."""
     start_time = datetime.datetime.now()
     service = UserService(postgres)
-    
+
     cache_key = "banned_users"
     cached = cache_instance.get(cache_key, namespace="users")
     if cached:
-        await metrics_service.increment("cache_hits", labels={"endpoint": "get_banned_users"})
+        await metrics_service.increment(
+            "cache_hits", labels={"endpoint": "get_banned_users"}
+        )
         return cached
-    
+
     users = await service.get_banned_users()
     cache_instance.set(cache_key, users, ttl=60, namespace="users")
-    
+
     duration = (datetime.datetime.now() - start_time).total_seconds() * 1000
     await metrics_service.timer("users_get_banned_duration", duration)
     await logging_service.info(f"Retrieved {len(users)} banned users")
-    
+
     return users
 
 
@@ -110,12 +112,12 @@ async def get_thx(
 ):
     """Get all users eligible for thanks."""
     service = UserService(postgres)
-    
+
     cache_key = "thx_users"
     cached = cache_instance.get(cache_key, namespace="users")
     if cached:
         return cached
-    
+
     users = await service.get_thx_users()
     cache_instance.set(cache_key, users, ttl=120, namespace="users")
     return users
@@ -130,20 +132,24 @@ async def get_user(
 ):
     """Get a user by ID."""
     service = UserService(postgres)
-    
+
     cache_key = f"user_{user_id}"
     cached = cache_instance.get(cache_key, namespace="users")
     if cached:
         await metrics_service.increment("cache_hits", labels={"endpoint": "get_user"})
         return cached
-    
+
     try:
         user = await service.get_user(user_id)
         cache_instance.set(cache_key, user, ttl=30, namespace="users")
-        await audit_service.log_user_action(user_id, AuditAction.READ, "user", str(user_id))
+        await audit_service.log_user_action(
+            user_id, AuditAction.READ, "user", str(user_id)
+        )
         return user
     except UserNotFoundError:
-        await metrics_service.record_error("user_not_found", f"User {user_id} not found")
+        await metrics_service.record_error(
+            "user_not_found", f"User {user_id} not found"
+        )
         raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -179,21 +185,21 @@ async def put_user(
     service = UserService(postgres)
     try:
         new_user = await service.create_user(user.user_id, user.name)
-        
+
         await audit_service.log(
             action=AuditAction.CREATE,
             resource_type="user",
             resource_id=str(user.user_id),
             severity=AuditSeverity.MEDIUM,
-            new_value={"user_id": user.user_id, "name": user.name}
+            new_value={"user_id": user.user_id, "name": user.name},
         )
         await metrics_service.increment("users_created")
         await logging_service.info(f"Created user {user.user_id}")
-        
+
         cache_instance.delete(f"user_{user.user_id}", namespace="users")
         cache_instance.delete("banned_users", namespace="users")
         cache_instance.delete("thx_users", namespace="users")
-        
+
     except UserAlreadyExistsError:
         raise HTTPException(status_code=409, detail="User already exists")
     except VkOperationError:
@@ -220,17 +226,17 @@ async def fire_user(
     service = UserService(postgres)
     try:
         message = await service.fire_user(user_id, fire_data.group_id)
-        
+
         await audit_service.log(
             action=AuditAction.UPDATE,
             resource_type="user",
             resource_id=str(user_id),
             severity=AuditSeverity.HIGH,
-            metadata={"action": "fire", "group_id": fire_data.group_id}
+            metadata={"action": "fire", "group_id": fire_data.group_id},
         )
         await metrics_service.increment("users_fired")
         cache_instance.delete(f"user_{user_id}", namespace="users")
-        
+
         return {"detail": message}
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
@@ -253,17 +259,17 @@ async def restore_user(
     service = UserService(postgres)
     try:
         message = await service.restore_user(user_id, restore_data.group_id)
-        
+
         await audit_service.log(
             action=AuditAction.UPDATE,
             resource_type="user",
             resource_id=str(user_id),
             severity=AuditSeverity.MEDIUM,
-            metadata={"action": "restore", "group_id": restore_data.group_id}
+            metadata={"action": "restore", "group_id": restore_data.group_id},
         )
         await metrics_service.increment("users_restored")
         cache_instance.delete(f"user_{user_id}", namespace="users")
-        
+
         return {"detail": message}
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
@@ -290,7 +296,9 @@ async def post_user(
             user_id,
             name=user.name,
             admin=user.admin,
-            groups=groups if groups is not None else ([] if user.groups == [] else None),
+            groups=(
+                groups if groups is not None else ([] if user.groups == [] else None)
+            ),
             activism=user.activism,
             donate=user.donate,
         )
@@ -352,19 +360,26 @@ async def add_violation(
     service = UserService(postgres)
     try:
         db_user = await service.add_violation(user_id, violation)
-        
+
         await audit_service.log(
             action=AuditAction.VIOLATION_ADD,
             resource_type="user",
             resource_id=str(user_id),
             severity=AuditSeverity.HIGH,
-            new_value={"violation_type": str(violation.type), "active": violation.active}
+            new_value={
+                "violation_type": str(violation.type),
+                "active": violation.active,
+            },
         )
-        await metrics_service.increment("violations_added", labels={"type": str(violation.type)})
-        await logging_service.warning(f"Violation added to user {user_id}: {violation.type}")
+        await metrics_service.increment(
+            "violations_added", labels={"type": str(violation.type)}
+        )
+        await logging_service.warning(
+            f"Violation added to user {user_id}: {violation.type}"
+        )
         cache_instance.delete(f"user_{user_id}", namespace="users")
         cache_instance.delete("banned_users", namespace="users")
-        
+
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
     except ViolationAddError:
@@ -374,9 +389,7 @@ async def add_violation(
     if violation.type == ViolationType.banned and violation.active and immediate:
         background_tasks.add_task(ban_service.ban_user_in_groups, user_id)
     else:
-        background_tasks.add_task(
-            _update_trust_task, user_id, postgres, trust_service
-        )
+        background_tasks.add_task(_update_trust_task, user_id, postgres, trust_service)
 
     return {"detail": f"Violation was added to user {db_user.user_id}"}
 
@@ -392,18 +405,18 @@ async def unban_user(
     service = UserService(postgres)
     try:
         db_user = await service.unban_user(user_id)
-        
+
         await audit_service.log(
             action=AuditAction.UNBAN,
             resource_type="user",
             resource_id=str(user_id),
-            severity=AuditSeverity.HIGH
+            severity=AuditSeverity.HIGH,
         )
         await metrics_service.increment("users_unbanned")
         await logging_service.info(f"User {user_id} unbanned")
         cache_instance.delete(f"user_{user_id}", namespace="users")
         cache_instance.delete("banned_users", namespace="users")
-        
+
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="User not found")
     except UserNotBannedError:

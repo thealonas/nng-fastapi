@@ -96,9 +96,7 @@ class RequestService:
         except ItemNotFoundException:
             raise RequestNotFoundError(f"Request {request_id} not found")
 
-    def _check_for_duplicates(
-        self, request_type: RequestType, user: User
-    ) -> None:
+    def _check_for_duplicates(self, request_type: RequestType, user: User) -> None:
         """Check for duplicate unblock requests."""
         if request_type is not RequestType.unblock:
             return
@@ -190,9 +188,7 @@ class RequestService:
             created_on=datetime.date.today(),
             user_id=user_id,
             user_message=user_message,
-            vk_comment=(
-                vk_comment if request_type is RequestType.complaint else None
-            ),
+            vk_comment=(vk_comment if request_type is RequestType.complaint else None),
             answer="",
             decision=False,
             answered=False,
@@ -245,9 +241,7 @@ class RequestService:
 
         return request, not original_answered
 
-    async def change_intruder(
-        self, request_id: int, new_intruder: int
-    ) -> Request:
+    async def change_intruder(self, request_id: int, new_intruder: int) -> Request:
         """Change the intruder of a request."""
         try:
             request: Request = self.postgres.requests.get_request(request_id)

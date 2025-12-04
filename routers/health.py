@@ -59,12 +59,12 @@ _start_time = datetime.datetime.now()
 
 def get_system_info() -> SystemInfo:
     uptime = (datetime.datetime.now() - _start_time).total_seconds()
-    
+
     return SystemInfo(
         python_version=sys.version,
         platform=platform.platform(),
         hostname=platform.node(),
-        uptime_seconds=uptime
+        uptime_seconds=uptime,
     )
 
 
@@ -77,7 +77,7 @@ async def check_database_health(postgres: NngPostgres) -> ComponentHealth:
             name="database",
             status="healthy",
             latency_ms=latency,
-            details={"connected": True}
+            details={"connected": True},
         )
     except Exception as e:
         latency = (datetime.datetime.now() - start).total_seconds() * 1000
@@ -85,67 +85,61 @@ async def check_database_health(postgres: NngPostgres) -> ComponentHealth:
             name="database",
             status="unhealthy",
             latency_ms=latency,
-            details={"connected": False, "error": str(e)}
+            details={"connected": False, "error": str(e)},
         )
 
 
 @router.get("/health", response_model=HealthResponse, tags=["health"])
 async def health_check(postgres: NngPostgres = Depends(get_db)):
     components = []
-    
+
     db_health = await check_database_health(postgres)
     components.append(db_health)
-    
-    components.append(ComponentHealth(
-        name="api",
-        status="healthy",
-        details={"endpoints_loaded": True}
-    ))
-    
-    overall_status = "healthy" if all(
-        c.status == "healthy" for c in components
-    ) else "degraded"
-    
+
+    components.append(
+        ComponentHealth(
+            name="api", status="healthy", details={"endpoints_loaded": True}
+        )
+    )
+
+    overall_status = (
+        "healthy" if all(c.status == "healthy" for c in components) else "degraded"
+    )
+
     return HealthResponse(
         status=overall_status,
         timestamp=datetime.datetime.now(),
         version="1.0.0",
         components=components,
-        system=get_system_info()
+        system=get_system_info(),
     )
 
 
 @router.get("/health/live", response_model=LivenessResponse, tags=["health"])
 async def liveness_check():
-    return LivenessResponse(
-        alive=True,
-        timestamp=datetime.datetime.now()
-    )
+    return LivenessResponse(alive=True, timestamp=datetime.datetime.now())
 
 
 @router.get("/health/ready", response_model=ReadinessResponse, tags=["health"])
 async def readiness_check(postgres: NngPostgres = Depends(get_db)):
     checks = {}
-    
+
     try:
         postgres.groups.get_all_groups()
         checks["database"] = True
     except Exception:
         checks["database"] = False
-    
+
     checks["api"] = True
-    
+
     ready = all(checks.values())
-    
-    return ReadinessResponse(
-        ready=ready,
-        checks=checks
-    )
+
+    return ReadinessResponse(ready=ready, checks=checks)
 
 
 @router.get("/health/info", tags=["health"])
 async def system_info():
     return {
         "system": get_system_info().model_dump(),
-        "timestamp": datetime.datetime.now().isoformat()
+        "timestamp": datetime.datetime.now().isoformat(),
     }

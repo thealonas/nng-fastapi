@@ -19,7 +19,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         service: RateLimitService = None,
         default_rule: str = "default",
         identifier_header: str = "X-API-Key",
-        skip_paths: list = None
+        skip_paths: list = None,
     ):
         super().__init__(app)
         self.service = service or rate_limiter
@@ -35,10 +35,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         api_key = request.headers.get(self.identifier_header)
         if api_key:
             return f"api:{api_key}"
-        
+
         if request.client:
             return f"ip:{request.client.host}"
-        
+
         return "anonymous"
 
     def _get_rule_for_path(self, path: str) -> str:
@@ -50,32 +50,32 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.url.path in self.skip_paths:
             return await call_next(request)
-        
+
         identifier = self._get_identifier(request)
         rule_name = self._get_rule_for_path(request.url.path)
-        
+
         result = self.service.check_rate_limit(identifier, rule_name)
-        
+
         if not result.allowed:
             return JSONResponse(
                 status_code=429,
                 content={
                     "error": "Rate limit exceeded",
                     "retry_after": result.retry_after,
-                    "reset_at": result.reset_at.isoformat()
+                    "reset_at": result.reset_at.isoformat(),
                 },
                 headers={
                     "Retry-After": str(result.retry_after),
                     "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": result.reset_at.isoformat()
-                }
+                    "X-RateLimit-Reset": result.reset_at.isoformat(),
+                },
             )
-        
+
         response = await call_next(request)
-        
+
         response.headers["X-RateLimit-Remaining"] = str(result.remaining)
         response.headers["X-RateLimit-Reset"] = result.reset_at.isoformat()
-        
+
         return response
 
 
@@ -88,18 +88,20 @@ class PerRouteRateLimiter:
             async def wrapper(request: Request, *args, **kwargs):
                 identifier = self._get_identifier(request)
                 result = self.service.check_rate_limit(identifier, rule_name)
-                
+
                 if not result.allowed:
                     return JSONResponse(
                         status_code=429,
                         content={
                             "error": "Rate limit exceeded",
-                            "retry_after": result.retry_after
-                        }
+                            "retry_after": result.retry_after,
+                        },
                     )
-                
+
                 return await func(request, *args, **kwargs)
+
             return wrapper
+
         return decorator
 
     def _get_identifier(self, request: Request) -> str:

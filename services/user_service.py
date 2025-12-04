@@ -139,9 +139,7 @@ class UserService:
             return []
         return self.postgres.users.search_users(query)
 
-    async def create_user(
-        self, user_id: int, name: Optional[str] = None
-    ) -> User:
+    async def create_user(self, user_id: int, name: Optional[str] = None) -> User:
         """Create a new user."""
         try:
             self.postgres.users.get_user(user_id)
@@ -262,9 +260,7 @@ class UserService:
         self.postgres.users.update_user(db_user)
         return db_user
 
-    async def update_trust(
-        self, user_id: int, trust_service: TrustService
-    ) -> None:
+    async def update_trust(self, user_id: int, trust_service: TrustService) -> None:
         """Update a user's trust factor."""
         try:
             self.postgres.users.get_user(user_id)
@@ -287,9 +283,7 @@ class UserService:
             max_groups=get_groups_restriction(trust), user_id=user.user_id
         )
 
-    async def add_violation(
-        self, user_id: int, violation: Violation
-    ) -> User:
+    async def add_violation(self, user_id: int, violation: Violation) -> User:
         """Add a violation to a user."""
         try:
             db_user: User = self.postgres.users.get_user(user_id)

@@ -48,7 +48,7 @@ class AppException(Exception):
         category: ErrorCategory = ErrorCategory.INTERNAL,
         code: str = "INTERNAL_ERROR",
         status_code: int = 500,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -65,7 +65,7 @@ class ValidationException(AppException):
             category=ErrorCategory.VALIDATION,
             code="VALIDATION_ERROR",
             status_code=400,
-            details=details
+            details=details,
         )
 
 
@@ -74,13 +74,13 @@ class NotFoundException(AppException):
         message = f"{resource} not found"
         if resource_id:
             message = f"{resource} with id '{resource_id}' not found"
-        
+
         super().__init__(
             message=message,
             category=ErrorCategory.NOT_FOUND,
             code="NOT_FOUND",
             status_code=404,
-            details={"resource": resource, "resource_id": resource_id}
+            details={"resource": resource, "resource_id": resource_id},
         )
 
 
@@ -90,7 +90,7 @@ class UnauthorizedException(AppException):
             message=message,
             category=ErrorCategory.AUTHENTICATION,
             code="UNAUTHORIZED",
-            status_code=401
+            status_code=401,
         )
 
 
@@ -100,7 +100,7 @@ class ForbiddenException(AppException):
             message=message,
             category=ErrorCategory.AUTHORIZATION,
             code="FORBIDDEN",
-            status_code=403
+            status_code=403,
         )
 
 
@@ -111,7 +111,7 @@ class ConflictException(AppException):
             category=ErrorCategory.CONFLICT,
             code="CONFLICT",
             status_code=409,
-            details=details
+            details=details,
         )
 
 
@@ -122,7 +122,7 @@ class RateLimitException(AppException):
             category=ErrorCategory.RATE_LIMIT,
             code="RATE_LIMIT_EXCEEDED",
             status_code=429,
-            details={"retry_after": retry_after}
+            details={"retry_after": retry_after},
         )
 
 
@@ -133,7 +133,7 @@ class ExternalServiceException(AppException):
             category=ErrorCategory.EXTERNAL_SERVICE,
             code="EXTERNAL_SERVICE_ERROR",
             status_code=502,
-            details={"service": service}
+            details={"service": service},
         )
 
 
@@ -143,18 +143,20 @@ class DatabaseException(AppException):
             message=message,
             category=ErrorCategory.DATABASE,
             code="DATABASE_ERROR",
-            status_code=500
+            status_code=500,
         )
 
 
 class BusinessLogicException(AppException):
-    def __init__(self, message: str, code: str = "BUSINESS_ERROR", details: Dict[str, Any] = None):
+    def __init__(
+        self, message: str, code: str = "BUSINESS_ERROR", details: Dict[str, Any] = None
+    ):
         super().__init__(
             message=message,
             category=ErrorCategory.BUSINESS_LOGIC,
             code=code,
             status_code=422,
-            details=details
+            details=details,
         )
 
 
@@ -166,7 +168,7 @@ class ErrorHandler:
     def register_handler(
         self,
         exception_type: Type[Exception],
-        handler: Callable[[Exception, Request], JSONResponse]
+        handler: Callable[[Exception, Request], JSONResponse],
     ) -> None:
         self._handlers[exception_type] = handler
 
@@ -175,27 +177,21 @@ class ErrorHandler:
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         return f"ERR-{timestamp}-{self._error_counter:06d}"
 
-    async def handle_exception(
-        self,
-        request: Request,
-        exc: Exception
-    ) -> JSONResponse:
+    async def handle_exception(self, request: Request, exc: Exception) -> JSONResponse:
         handler = self._handlers.get(type(exc))
         if handler:
             return handler(exc, request)
-        
+
         if isinstance(exc, AppException):
             return self._handle_app_exception(exc, request)
-        
+
         if isinstance(exc, HTTPException):
             return self._handle_http_exception(exc, request)
-        
+
         return self._handle_unknown_exception(exc, request)
 
     def _handle_app_exception(
-        self,
-        exc: AppException,
-        request: Request
+        self, exc: AppException, request: Request
     ) -> JSONResponse:
         error_response = ErrorResponse(
             error_id=self.generate_error_id(),
@@ -203,38 +199,32 @@ class ErrorHandler:
             code=exc.code,
             message=exc.message,
             details=exc.details,
-            path=str(request.url.path)
+            path=str(request.url.path),
         )
-        
+
         return JSONResponse(
-            status_code=exc.status_code,
-            content=error_response.model_dump(mode="json")
+            status_code=exc.status_code, content=error_response.model_dump(mode="json")
         )
 
     def _handle_http_exception(
-        self,
-        exc: HTTPException,
-        request: Request
+        self, exc: HTTPException, request: Request
     ) -> JSONResponse:
         category = self._get_category_from_status(exc.status_code)
-        
+
         error_response = ErrorResponse(
             error_id=self.generate_error_id(),
             category=category,
             code=f"HTTP_{exc.status_code}",
             message=exc.detail,
-            path=str(request.url.path)
+            path=str(request.url.path),
         )
-        
+
         return JSONResponse(
-            status_code=exc.status_code,
-            content=error_response.model_dump(mode="json")
+            status_code=exc.status_code, content=error_response.model_dump(mode="json")
         )
 
     def _handle_unknown_exception(
-        self,
-        exc: Exception,
-        request: Request
+        self, exc: Exception, request: Request
     ) -> JSONResponse:
         error_response = ErrorResponse(
             error_id=self.generate_error_id(),
@@ -242,12 +232,11 @@ class ErrorHandler:
             code="INTERNAL_ERROR",
             message="An unexpected error occurred",
             path=str(request.url.path),
-            details={"exception_type": type(exc).__name__}
+            details={"exception_type": type(exc).__name__},
         )
-        
+
         return JSONResponse(
-            status_code=500,
-            content=error_response.model_dump(mode="json")
+            status_code=500, content=error_response.model_dump(mode="json")
         )
 
     def _get_category_from_status(self, status_code: int) -> ErrorCategory:

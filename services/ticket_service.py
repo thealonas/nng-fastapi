@@ -145,7 +145,9 @@ class TicketService:
     def algolia_index(self) -> SearchIndex:
         """Get or create Algolia index."""
         if self._algolia_index is None:
-            algolia_credentials: AlgoliaCredentials = OpConnect().get_algolia_credentials()
+            algolia_credentials: AlgoliaCredentials = (
+                OpConnect().get_algolia_credentials()
+            )
             algolia: SearchClient = SearchClient.create(
                 algolia_credentials.app_id, algolia_credentials.api_key
             )
@@ -202,9 +204,7 @@ class TicketService:
                 )
             )
 
-    async def add_message(
-        self, ticket_id: int, message: UploadMessage
-    ) -> None:
+    async def add_message(self, ticket_id: int, message: UploadMessage) -> None:
         """Add a message to a ticket."""
         try:
             ticket: Ticket = self.postgres.tickets.get_ticket(ticket_id)

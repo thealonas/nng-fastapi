@@ -50,24 +50,26 @@ async def auth(
         result = await service.authenticate_service(
             credential_form.service_name, credential_form.credential
         )
-        
+
         ip_address = request.client.host if request.client else None
         await audit_service.log(
             action=AuditAction.LOGIN,
             resource_type="service",
             resource_id=credential_form.service_name,
             severity=AuditSeverity.MEDIUM,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
         await metrics_service.increment("auth_service_success")
-        
+
         duration = (datetime.datetime.now() - start_time).total_seconds() * 1000
         await metrics_service.timer("auth_duration", duration)
-        
+
         return {"token": result.token, "token_type": result.token_type}
     except InvalidCredentialError:
         await metrics_service.increment("auth_service_failed")
-        await logging_service.warning(f"Failed auth attempt for service: {credential_form.service_name}")
+        await logging_service.warning(
+            f"Failed auth attempt for service: {credential_form.service_name}"
+        )
         raise HTTPException(status_code=401, detail="Invalid credential")
 
 
@@ -84,17 +86,17 @@ async def vk_auth(
         result = await service.authenticate_vk_user(
             code_form.code, code_form.original_redirect_uri
         )
-        
+
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
-        
+
         await session_service.create_session(
             user_id=result.user_id,
             ip_address=ip_address,
             user_agent=user_agent,
-            data={"vk_token": result.vk_token}
+            data={"vk_token": result.vk_token},
         )
-        
+
         await audit_service.log(
             action=AuditAction.LOGIN,
             resource_type="user",
@@ -102,11 +104,11 @@ async def vk_auth(
             resource_id=str(result.user_id),
             severity=AuditSeverity.LOW,
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
         await metrics_service.increment("auth_vk_success")
         await logging_service.info(f"User {result.user_id} logged in via VK")
-        
+
         return {
             "token": result.token,
             "token_type": result.token_type,
@@ -138,7 +140,7 @@ async def is_valid(
 
     service = AuthService()
     result = await service.whoami(token)
-    
+
     await metrics_service.increment("auth_whoami_requests")
-    
+
     return result

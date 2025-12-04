@@ -29,31 +29,30 @@ async def export_users(
     format: str = "json",
     pretty: bool = False,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = ExportService(postgres)
-    
-    export_format = ExportFormat(format) if format in [f.value for f in ExportFormat] else ExportFormat.JSON
-    
-    config = ExportConfig(
-        format=export_format,
-        pretty_print=pretty
+
+    export_format = (
+        ExportFormat(format)
+        if format in [f.value for f in ExportFormat]
+        else ExportFormat.JSON
     )
-    
+
+    config = ExportConfig(format=export_format, pretty_print=pretty)
+
     result = await service.export_users(config)
-    
+
     content_types = {
         ExportFormat.JSON: "application/json",
         ExportFormat.CSV: "text/csv",
-        ExportFormat.XML: "application/xml"
+        ExportFormat.XML: "application/xml",
     }
-    
+
     return Response(
         content=result.content,
         media_type=content_types[export_format],
-        headers={
-            "Content-Disposition": f"attachment; filename={result.filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={result.filename}"},
     )
 
 
@@ -62,31 +61,30 @@ async def export_groups(
     format: str = "json",
     pretty: bool = False,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = ExportService(postgres)
-    
-    export_format = ExportFormat(format) if format in [f.value for f in ExportFormat] else ExportFormat.JSON
-    
-    config = ExportConfig(
-        format=export_format,
-        pretty_print=pretty
+
+    export_format = (
+        ExportFormat(format)
+        if format in [f.value for f in ExportFormat]
+        else ExportFormat.JSON
     )
-    
+
+    config = ExportConfig(format=export_format, pretty_print=pretty)
+
     result = await service.export_groups(config)
-    
+
     content_types = {
         ExportFormat.JSON: "application/json",
         ExportFormat.CSV: "text/csv",
-        ExportFormat.XML: "application/xml"
+        ExportFormat.XML: "application/xml",
     }
-    
+
     return Response(
         content=result.content,
         media_type=content_types[export_format],
-        headers={
-            "Content-Disposition": f"attachment; filename={result.filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={result.filename}"},
     )
 
 
@@ -95,31 +93,30 @@ async def export_tickets(
     format: str = "json",
     pretty: bool = False,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = ExportService(postgres)
-    
-    export_format = ExportFormat(format) if format in [f.value for f in ExportFormat] else ExportFormat.JSON
-    
-    config = ExportConfig(
-        format=export_format,
-        pretty_print=pretty
+
+    export_format = (
+        ExportFormat(format)
+        if format in [f.value for f in ExportFormat]
+        else ExportFormat.JSON
     )
-    
+
+    config = ExportConfig(format=export_format, pretty_print=pretty)
+
     result = await service.export_tickets(config)
-    
+
     content_types = {
         ExportFormat.JSON: "application/json",
         ExportFormat.CSV: "text/csv",
-        ExportFormat.XML: "application/xml"
+        ExportFormat.XML: "application/xml",
     }
-    
+
     return Response(
         content=result.content,
         media_type=content_types[export_format],
-        headers={
-            "Content-Disposition": f"attachment; filename={result.filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={result.filename}"},
     )
 
 
@@ -128,31 +125,30 @@ async def export_requests(
     format: str = "json",
     pretty: bool = False,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = ExportService(postgres)
-    
-    export_format = ExportFormat(format) if format in [f.value for f in ExportFormat] else ExportFormat.JSON
-    
-    config = ExportConfig(
-        format=export_format,
-        pretty_print=pretty
+
+    export_format = (
+        ExportFormat(format)
+        if format in [f.value for f in ExportFormat]
+        else ExportFormat.JSON
     )
-    
+
+    config = ExportConfig(format=export_format, pretty_print=pretty)
+
     result = await service.export_requests(config)
-    
+
     content_types = {
         ExportFormat.JSON: "application/json",
         ExportFormat.CSV: "text/csv",
-        ExportFormat.XML: "application/xml"
+        ExportFormat.XML: "application/xml",
     }
-    
+
     return Response(
         content=result.content,
         media_type=content_types[export_format],
-        headers={
-            "Content-Disposition": f"attachment; filename={result.filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={result.filename}"},
     )
 
 
@@ -162,29 +158,28 @@ async def export_user_data(
     format: str = "json",
     pretty: bool = False,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = ExportService(postgres)
-    
-    export_format = ExportFormat(format) if format in [f.value for f in ExportFormat] else ExportFormat.JSON
-    
-    config = ExportConfig(
-        format=export_format,
-        pretty_print=pretty
+
+    export_format = (
+        ExportFormat(format)
+        if format in [f.value for f in ExportFormat]
+        else ExportFormat.JSON
     )
-    
+
+    config = ExportConfig(format=export_format, pretty_print=pretty)
+
     result = await service.export_user_data(user_id, config)
-    
+
     content_types = {
         ExportFormat.JSON: "application/json",
         ExportFormat.CSV: "text/csv",
-        ExportFormat.XML: "application/xml"
+        ExportFormat.XML: "application/xml",
     }
-    
+
     return Response(
         content=result.content,
         media_type=content_types[export_format],
-        headers={
-            "Content-Disposition": f"attachment; filename={result.filename}"
-        }
+        headers={"Content-Disposition": f"attachment; filename={result.filename}"},
     )

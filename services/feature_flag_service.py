@@ -61,27 +61,27 @@ class FeatureFlagService:
             FeatureFlag(
                 name="new_dashboard",
                 description="Enable new dashboard UI",
-                status=FeatureStatus.DISABLED
+                status=FeatureStatus.DISABLED,
             ),
             FeatureFlag(
                 name="advanced_search",
                 description="Enable advanced search features",
-                status=FeatureStatus.ENABLED
+                status=FeatureStatus.ENABLED,
             ),
             FeatureFlag(
                 name="beta_features",
                 description="Enable beta features for testing",
                 status=FeatureStatus.USER_LIST,
-                enabled_users=[]
+                enabled_users=[],
             ),
             FeatureFlag(
                 name="dark_mode",
                 description="Enable dark mode UI",
                 status=FeatureStatus.PERCENTAGE,
-                percentage=50.0
+                percentage=50.0,
             ),
         ]
-        
+
         for flag in default_flags:
             self._flags[flag.name] = flag
 
@@ -90,18 +90,13 @@ class FeatureFlagService:
         name: str,
         description: str = "",
         status: FeatureStatus = FeatureStatus.DISABLED,
-        **kwargs
+        **kwargs,
     ) -> FeatureFlag:
         if name in self._flags:
             raise ValueError(f"Flag '{name}' already exists")
-        
-        flag = FeatureFlag(
-            name=name,
-            description=description,
-            status=status,
-            **kwargs
-        )
-        
+
+        flag = FeatureFlag(name=name, description=description, status=status, **kwargs)
+
         self._flags[name] = flag
         return flag
 
@@ -118,12 +113,12 @@ class FeatureFlagService:
         percentage: float = None,
         enabled_users: List[int] = None,
         enabled_groups: List[str] = None,
-        description: str = None
+        description: str = None,
     ) -> Optional[FeatureFlag]:
         flag = self._flags.get(name)
         if not flag:
             return None
-        
+
         if status is not None:
             flag.status = status
         if percentage is not None:
@@ -134,7 +129,7 @@ class FeatureFlagService:
             flag.enabled_groups = enabled_groups
         if description is not None:
             flag.description = description
-        
+
         flag.updated_at = datetime.datetime.now()
         return flag
 
@@ -149,7 +144,7 @@ class FeatureFlagService:
         name: str,
         user_id: Optional[int] = None,
         user_group: Optional[str] = None,
-        default: bool = False
+        default: bool = False,
     ) -> bool:
         evaluation = self.evaluate(name, user_id, user_group, default)
         return evaluation.enabled
@@ -159,31 +154,31 @@ class FeatureFlagService:
         name: str,
         user_id: Optional[int] = None,
         user_group: Optional[str] = None,
-        default: bool = False
+        default: bool = False,
     ) -> FeatureFlagEvaluation:
         flag = self._flags.get(name)
-        
+
         if not flag:
             evaluation = FeatureFlagEvaluation(
                 flag_name=name,
                 enabled=default,
                 reason="Flag not found, using default",
-                user_id=user_id
+                user_id=user_id,
             )
             self._log_evaluation(evaluation)
             return evaluation
-        
+
         enabled = False
         reason = ""
-        
+
         if flag.status == FeatureStatus.ENABLED:
             enabled = True
             reason = "Flag is globally enabled"
-        
+
         elif flag.status == FeatureStatus.DISABLED:
             enabled = False
             reason = "Flag is globally disabled"
-        
+
         elif flag.status == FeatureStatus.PERCENTAGE:
             if user_id is not None:
                 hash_value = hash(f"{name}:{user_id}") % 100
@@ -192,7 +187,7 @@ class FeatureFlagService:
             else:
                 enabled = False
                 reason = "No user_id for percentage evaluation"
-        
+
         elif flag.status == FeatureStatus.USER_LIST:
             if user_id is not None and user_id in flag.enabled_users:
                 enabled = True
@@ -200,7 +195,7 @@ class FeatureFlagService:
             else:
                 enabled = False
                 reason = "User is not in enabled list"
-        
+
         elif flag.status == FeatureStatus.GROUP_LIST:
             if user_group is not None and user_group in flag.enabled_groups:
                 enabled = True
@@ -208,21 +203,18 @@ class FeatureFlagService:
             else:
                 enabled = False
                 reason = "User group is not in enabled list"
-        
+
         evaluation = FeatureFlagEvaluation(
-            flag_name=name,
-            enabled=enabled,
-            reason=reason,
-            user_id=user_id
+            flag_name=name, enabled=enabled, reason=reason, user_id=user_id
         )
-        
+
         self._log_evaluation(evaluation)
         return evaluation
 
     def _log_evaluation(self, evaluation: FeatureFlagEvaluation) -> None:
         self._evaluation_log.append(evaluation)
         if len(self._evaluation_log) > self._max_log_size:
-            self._evaluation_log = self._evaluation_log[-self._max_log_size:]
+            self._evaluation_log = self._evaluation_log[-self._max_log_size :]
 
     def enable_flag(self, name: str) -> bool:
         return self.update_flag(name, status=FeatureStatus.ENABLED) is not None
@@ -249,22 +241,21 @@ class FeatureFlagService:
 
     def set_percentage(self, name: str, percentage: float) -> bool:
         percentage = max(0.0, min(100.0, percentage))
-        return self.update_flag(
-            name,
-            status=FeatureStatus.PERCENTAGE,
-            percentage=percentage
-        ) is not None
+        return (
+            self.update_flag(
+                name, status=FeatureStatus.PERCENTAGE, percentage=percentage
+            )
+            is not None
+        )
 
     def get_evaluation_log(
-        self,
-        flag_name: Optional[str] = None,
-        limit: int = 100
+        self, flag_name: Optional[str] = None, limit: int = 100
     ) -> List[FeatureFlagEvaluation]:
         logs = self._evaluation_log.copy()
-        
+
         if flag_name:
             logs = [l for l in logs if l.flag_name == flag_name]
-        
+
         logs.reverse()
         return logs[:limit]
 
@@ -273,11 +264,11 @@ class FeatureFlagService:
         for flag in self._flags.values():
             status = flag.status.value
             status_counts[status] = status_counts.get(status, 0) + 1
-        
+
         return {
             "total_flags": len(self._flags),
             "status_distribution": status_counts,
-            "total_evaluations": len(self._evaluation_log)
+            "total_evaluations": len(self._evaluation_log),
         }
 
 
@@ -285,8 +276,6 @@ feature_flags = FeatureFlagService()
 
 
 def is_feature_enabled(
-    name: str,
-    user_id: Optional[int] = None,
-    default: bool = False
+    name: str, user_id: Optional[int] = None, default: bool = False
 ) -> bool:
     return feature_flags.is_enabled(name, user_id, default=default)

@@ -33,11 +33,11 @@ class Metric:
     points: List[MetricPoint] = field(default_factory=list)
 
     def add_point(self, value: float, labels: Optional[Dict[str, str]] = None) -> None:
-        self.points.append(MetricPoint(
-            value=value,
-            timestamp=datetime.datetime.now(),
-            labels=labels or {}
-        ))
+        self.points.append(
+            MetricPoint(
+                value=value, timestamp=datetime.datetime.now(), labels=labels or {}
+            )
+        )
 
     def get_latest(self) -> Optional[float]:
         if not self.points:
@@ -47,7 +47,7 @@ class Metric:
     def get_stats(self) -> Dict[str, Any]:
         if not self.points:
             return {}
-        
+
         values = [p.value for p in self.points]
         return {
             "count": len(values),
@@ -56,7 +56,7 @@ class Metric:
             "max": max(values),
             "avg": statistics.mean(values),
             "median": statistics.median(values) if len(values) > 1 else values[0],
-            "stddev": statistics.stdev(values) if len(values) > 1 else 0
+            "stddev": statistics.stdev(values) if len(values) > 1 else 0,
         }
 
 
@@ -68,31 +68,24 @@ class MetricsService:
         self._error_counts: Dict[str, int] = defaultdict(int)
 
     def _get_or_create_metric(
-        self,
-        name: str,
-        metric_type: MetricType,
-        description: str = "",
-        unit: str = ""
+        self, name: str, metric_type: MetricType, description: str = "", unit: str = ""
     ) -> Metric:
         if name not in self._metrics:
             self._metrics[name] = Metric(
-                name=name,
-                metric_type=metric_type,
-                description=description,
-                unit=unit
+                name=name, metric_type=metric_type, description=description, unit=unit
             )
         return self._metrics[name]
 
     def _trim_points(self, metric: Metric) -> None:
         if len(metric.points) > self._max_points:
-            metric.points = metric.points[-self._max_points:]
+            metric.points = metric.points[-self._max_points :]
 
     async def increment(
         self,
         name: str,
         value: float = 1.0,
         labels: Optional[Dict[str, str]] = None,
-        description: str = ""
+        description: str = "",
     ) -> float:
         metric = self._get_or_create_metric(name, MetricType.COUNTER, description)
         current = metric.get_latest() or 0
@@ -106,7 +99,7 @@ class MetricsService:
         name: str,
         value: float,
         labels: Optional[Dict[str, str]] = None,
-        description: str = ""
+        description: str = "",
     ) -> None:
         metric = self._get_or_create_metric(name, MetricType.GAUGE, description)
         metric.add_point(value, labels)
@@ -118,9 +111,11 @@ class MetricsService:
         value: float,
         labels: Optional[Dict[str, str]] = None,
         description: str = "",
-        unit: str = ""
+        unit: str = "",
     ) -> None:
-        metric = self._get_or_create_metric(name, MetricType.HISTOGRAM, description, unit)
+        metric = self._get_or_create_metric(
+            name, MetricType.HISTOGRAM, description, unit
+        )
         metric.add_point(value, labels)
         self._trim_points(metric)
 
@@ -129,7 +124,7 @@ class MetricsService:
         name: str,
         duration_ms: float,
         labels: Optional[Dict[str, str]] = None,
-        description: str = ""
+        description: str = "",
     ) -> None:
         metric = self._get_or_create_metric(name, MetricType.TIMER, description, "ms")
         metric.add_point(duration_ms, labels)
@@ -139,21 +134,13 @@ class MetricsService:
             self._request_durations = self._request_durations[-10000:]
 
     async def record_request(
-        self,
-        endpoint: str,
-        method: str,
-        status_code: int,
-        duration_ms: float
+        self, endpoint: str, method: str, status_code: int, duration_ms: float
     ) -> None:
-        labels = {
-            "endpoint": endpoint,
-            "method": method,
-            "status": str(status_code)
-        }
-        
+        labels = {"endpoint": endpoint, "method": method, "status": str(status_code)}
+
         await self.increment("http_requests_total", labels=labels)
         await self.timer("http_request_duration", duration_ms, labels=labels)
-        
+
         if status_code >= 400:
             error_key = f"{method}:{endpoint}:{status_code}"
             self._error_counts[error_key] += 1
@@ -162,7 +149,7 @@ class MetricsService:
         self,
         error_type: str,
         message: str = "",
-        labels: Optional[Dict[str, str]] = None
+        labels: Optional[Dict[str, str]] = None,
     ) -> None:
         merged_labels = {"error_type": error_type, **(labels or {})}
         await self.increment("errors_total", labels=merged_labels)
@@ -188,7 +175,7 @@ class MetricsService:
                 "description": metric.description,
                 "unit": metric.unit,
                 "latest_value": metric.get_latest(),
-                "stats": metric.get_stats()
+                "stats": metric.get_stats(),
             }
             for name, metric in self._metrics.items()
         }
@@ -196,7 +183,7 @@ class MetricsService:
     def get_request_stats(self) -> Dict[str, Any]:
         if not self._request_durations:
             return {}
-        
+
         return {
             "total_requests": len(self._request_durations),
             "avg_duration_ms": statistics.mean(self._request_durations),
@@ -204,7 +191,7 @@ class MetricsService:
             "max_duration_ms": max(self._request_durations),
             "p50_duration_ms": statistics.median(self._request_durations),
             "p95_duration_ms": self._percentile(self._request_durations, 95),
-            "p99_duration_ms": self._percentile(self._request_durations, 99)
+            "p99_duration_ms": self._percentile(self._request_durations, 99),
         }
 
     def _percentile(self, data: List[float], percentile: float) -> float:
@@ -222,7 +209,7 @@ class MetricsService:
             "metrics_count": len(self._metrics),
             "request_stats": self.get_request_stats(),
             "error_counts": dict(self._error_counts),
-            "metrics": self.get_all_metrics()
+            "metrics": self.get_all_metrics(),
         }
 
     def reset(self, name: Optional[str] = None) -> None:

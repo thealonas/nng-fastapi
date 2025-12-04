@@ -9,7 +9,7 @@ import threading
 import inspect
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Scope(str, Enum):
@@ -44,14 +44,14 @@ class ServiceCollection:
         service_type: Type[T],
         implementation_type: Type[T] = None,
         factory: Callable[..., T] = None,
-        instance: T = None
+        instance: T = None,
     ) -> "ServiceCollection":
         self._descriptors[service_type] = ServiceDescriptor(
             service_type=service_type,
             implementation_type=implementation_type,
             factory=factory,
             instance=instance,
-            scope=Scope.SINGLETON
+            scope=Scope.SINGLETON,
         )
         return self
 
@@ -59,13 +59,13 @@ class ServiceCollection:
         self,
         service_type: Type[T],
         implementation_type: Type[T] = None,
-        factory: Callable[..., T] = None
+        factory: Callable[..., T] = None,
     ) -> "ServiceCollection":
         self._descriptors[service_type] = ServiceDescriptor(
             service_type=service_type,
             implementation_type=implementation_type,
             factory=factory,
-            scope=Scope.TRANSIENT
+            scope=Scope.TRANSIENT,
         )
         return self
 
@@ -73,21 +73,17 @@ class ServiceCollection:
         self,
         service_type: Type[T],
         implementation_type: Type[T] = None,
-        factory: Callable[..., T] = None
+        factory: Callable[..., T] = None,
     ) -> "ServiceCollection":
         self._descriptors[service_type] = ServiceDescriptor(
             service_type=service_type,
             implementation_type=implementation_type,
             factory=factory,
-            scope=Scope.SCOPED
+            scope=Scope.SCOPED,
         )
         return self
 
-    def add_instance(
-        self,
-        service_type: Type[T],
-        instance: T
-    ) -> "ServiceCollection":
+    def add_instance(self, service_type: Type[T], instance: T) -> "ServiceCollection":
         return self.add_singleton(service_type, instance=instance)
 
     def build_provider(self) -> "ServiceProvider":
@@ -105,13 +101,15 @@ class ServiceProvider:
         descriptor = self._descriptors.get(service_type)
         if not descriptor:
             return None
-        
+
         return self._resolve(descriptor)
 
     def get_required_service(self, service_type: Type[T]) -> T:
         service = self.get_service(service_type)
         if service is None:
-            raise ServiceNotFoundError(f"Service {service_type.__name__} not registered")
+            raise ServiceNotFoundError(
+                f"Service {service_type.__name__} not registered"
+            )
         return service
 
     def _resolve(self, descriptor: ServiceDescriptor) -> Any:
@@ -126,7 +124,7 @@ class ServiceProvider:
         with self._lock:
             if descriptor.service_type in self._singletons:
                 return self._singletons[descriptor.service_type]
-            
+
             instance = self._create_instance(descriptor)
             self._singletons[descriptor.service_type] = instance
             return instance
@@ -135,7 +133,7 @@ class ServiceProvider:
         with self._lock:
             if descriptor.service_type in self._scoped:
                 return self._scoped[descriptor.service_type]
-            
+
             instance = self._create_instance(descriptor)
             self._scoped[descriptor.service_type] = instance
             return instance
@@ -143,23 +141,23 @@ class ServiceProvider:
     def _create_instance(self, descriptor: ServiceDescriptor) -> Any:
         if descriptor.instance is not None:
             return descriptor.instance
-        
+
         if descriptor.factory is not None:
             return self._invoke_factory(descriptor.factory)
-        
+
         impl_type = descriptor.implementation_type or descriptor.service_type
         return self._construct(impl_type)
 
     def _invoke_factory(self, factory: Callable) -> Any:
         sig = inspect.signature(factory)
         params = {}
-        
+
         for name, param in sig.parameters.items():
             if param.annotation != inspect.Parameter.empty:
                 service = self.get_service(param.annotation)
                 if service is not None:
                     params[name] = service
-        
+
         return factory(**params)
 
     def _construct(self, cls: Type) -> Any:
@@ -167,12 +165,12 @@ class ServiceProvider:
             sig = inspect.signature(cls.__init__)
         except (ValueError, TypeError):
             return cls()
-        
+
         params = {}
         for name, param in sig.parameters.items():
-            if name == 'self':
+            if name == "self":
                 continue
-            
+
             if param.annotation != inspect.Parameter.empty:
                 service = self.get_service(param.annotation)
                 if service is not None:
@@ -181,7 +179,7 @@ class ServiceProvider:
                     raise DependencyResolutionError(
                         f"Cannot resolve dependency {param.annotation} for {cls.__name__}"
                     )
-        
+
         return cls(**params)
 
     def create_scope(self) -> "ServiceScope":
@@ -200,13 +198,13 @@ class ServiceScope:
     def get_service(self, service_type: Type[T]) -> Optional[T]:
         if service_type in self._scoped:
             return self._scoped[service_type]
-        
+
         service = self._provider.get_service(service_type)
-        
+
         descriptor = self._provider._descriptors.get(service_type)
         if descriptor and descriptor.scope == Scope.SCOPED:
             self._scoped[service_type] = service
-        
+
         return service
 
     def __enter__(self):
@@ -244,7 +242,7 @@ class Container:
         self,
         service_type: Type[T],
         implementation: Type[T] = None,
-        factory: Callable = None
+        factory: Callable = None,
     ) -> "Container":
         self._collection.add_singleton(service_type, implementation, factory)
         return self
@@ -253,7 +251,7 @@ class Container:
         self,
         service_type: Type[T],
         implementation: Type[T] = None,
-        factory: Callable = None
+        factory: Callable = None,
     ) -> "Container":
         self._collection.add_transient(service_type, implementation, factory)
         return self
@@ -262,16 +260,12 @@ class Container:
         self,
         service_type: Type[T],
         implementation: Type[T] = None,
-        factory: Callable = None
+        factory: Callable = None,
     ) -> "Container":
         self._collection.add_scoped(service_type, implementation, factory)
         return self
 
-    def register_instance(
-        self,
-        service_type: Type[T],
-        instance: T
-    ) -> "Container":
+    def register_instance(self, service_type: Type[T], instance: T) -> "Container":
         self._collection.add_instance(service_type, instance)
         return self
 
