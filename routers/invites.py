@@ -7,7 +7,7 @@ from nng_sdk.pydantic_models.user import User
 from pydantic import BaseModel
 
 from auth.actions import ensure_authorization
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
 from services.invite_service import (
     InviteService,
     InvalidUserError,
@@ -15,6 +15,7 @@ from services.invite_service import (
     UseInviteResponseType,
     MyCodeResponse,
 )
+from utils.response import ResponseFormatter
 
 
 class InviteForm(BaseModel):
@@ -32,6 +33,7 @@ async def get_my_code(
     user_id: int,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get invite code for a user."""
     service = InviteService(postgres)
@@ -47,6 +49,7 @@ async def use_invite(
     response: Response,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Use an invite code."""
     service = InviteService(postgres)
@@ -60,6 +63,7 @@ async def get_users_invited_by_user(
     user_id: int,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Get users invited by a specific user."""
     service = InviteService(postgres)

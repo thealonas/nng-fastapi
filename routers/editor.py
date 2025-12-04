@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from auth.actions import ensure_authorization, ensure_websocket_authorization
-from dependencies import get_db
+from dependencies import get_db, get_response_formatter
 from services.editor_service import (
     EditorService,
     GiveEditorResponse,
@@ -15,6 +15,7 @@ from services.editor_service import (
     EditorLogType,
 )
 from utils.websocket_logger_manager import WebSocketLoggerManager
+from utils.response import ResponseFormatter
 
 router = APIRouter()
 
@@ -77,6 +78,7 @@ async def give_editor(
     request: GiveEditorRequest,
     _: Annotated[bool, Depends(ensure_authorization)],
     postgres: NngPostgres = Depends(get_db),
+    formatter: ResponseFormatter = Depends(get_response_formatter),
 ):
     """Give editor to a user."""
     service = EditorService(postgres, ws_manager)
