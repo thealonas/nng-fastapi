@@ -77,7 +77,7 @@ class AuditService:
 
     def _trim_entries(self) -> None:
         if len(self._entries) > self._max_entries:
-            self._entries = self._entries[-self._max_entries:]
+            self._entries = self._entries[-self._max_entries :]
 
     async def log(
         self,
@@ -93,10 +93,10 @@ class AuditService:
         new_value: Optional[Dict[str, Any]] = None,
         metadata: Dict[str, Any] = None,
         success: bool = True,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
     ) -> AuditEntry:
         self._audit_counter += 1
-        
+
         entry = AuditEntry(
             audit_id=self._audit_counter,
             timestamp=datetime.datetime.now(),
@@ -112,12 +112,12 @@ class AuditService:
             new_value=new_value,
             metadata=metadata or {},
             success=success,
-            error_message=error_message
+            error_message=error_message,
         )
-        
+
         self._entries.append(entry)
         self._trim_entries()
-        
+
         return entry
 
     async def log_user_action(
@@ -126,7 +126,7 @@ class AuditService:
         action: AuditAction,
         resource_type: str,
         resource_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ) -> AuditEntry:
         return await self.log(
             action=action,
@@ -134,7 +134,7 @@ class AuditService:
             actor_id=user_id,
             actor_type="user",
             resource_id=resource_id,
-            metadata=details or {}
+            metadata=details or {},
         )
 
     async def log_system_action(
@@ -142,95 +142,95 @@ class AuditService:
         action: AuditAction,
         resource_type: str,
         resource_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ) -> AuditEntry:
         return await self.log(
             action=action,
             resource_type=resource_type,
             actor_type="system",
             resource_id=resource_id,
-            metadata=details or {}
+            metadata=details or {},
         )
 
     async def get_entries(
         self,
         filter_params: Optional[AuditFilter] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[AuditEntry]:
         entries = self._entries.copy()
-        
+
         if filter_params:
             if filter_params.actor_id is not None:
                 entries = [e for e in entries if e.actor_id == filter_params.actor_id]
-            
+
             if filter_params.action is not None:
                 entries = [e for e in entries if e.action == filter_params.action]
-            
+
             if filter_params.resource_type is not None:
-                entries = [e for e in entries if e.resource_type == filter_params.resource_type]
-            
+                entries = [
+                    e for e in entries if e.resource_type == filter_params.resource_type
+                ]
+
             if filter_params.resource_id is not None:
-                entries = [e for e in entries if e.resource_id == filter_params.resource_id]
-            
+                entries = [
+                    e for e in entries if e.resource_id == filter_params.resource_id
+                ]
+
             if filter_params.severity is not None:
                 entries = [e for e in entries if e.severity == filter_params.severity]
-            
+
             if filter_params.start_date is not None:
-                entries = [e for e in entries if e.timestamp >= filter_params.start_date]
-            
+                entries = [
+                    e for e in entries if e.timestamp >= filter_params.start_date
+                ]
+
             if filter_params.end_date is not None:
                 entries = [e for e in entries if e.timestamp <= filter_params.end_date]
-            
+
             if filter_params.success is not None:
                 entries = [e for e in entries if e.success == filter_params.success]
-        
+
         entries.sort(key=lambda x: x.timestamp, reverse=True)
-        
-        return entries[offset:offset + limit]
+
+        return entries[offset : offset + limit]
 
     async def get_entry(self, audit_id: int) -> Optional[AuditEntry]:
-        return next(
-            (e for e in self._entries if e.audit_id == audit_id),
-            None
-        )
+        return next((e for e in self._entries if e.audit_id == audit_id), None)
 
     async def get_user_activity(
-        self,
-        user_id: int,
-        limit: int = 50
+        self, user_id: int, limit: int = 50
     ) -> List[AuditEntry]:
         return await self.get_entries(
-            filter_params=AuditFilter(actor_id=user_id),
-            limit=limit
+            filter_params=AuditFilter(actor_id=user_id), limit=limit
         )
 
     async def get_resource_history(
-        self,
-        resource_type: str,
-        resource_id: str,
-        limit: int = 50
+        self, resource_type: str, resource_id: str, limit: int = 50
     ) -> List[AuditEntry]:
         return await self.get_entries(
             filter_params=AuditFilter(
-                resource_type=resource_type,
-                resource_id=resource_id
+                resource_type=resource_type, resource_id=resource_id
             ),
-            limit=limit
+            limit=limit,
         )
 
     def get_stats(self) -> Dict[str, Any]:
         now = datetime.datetime.now()
         last_hour = now - datetime.timedelta(hours=1)
         last_day = now - datetime.timedelta(days=1)
-        
+
         return {
             "total_entries": len(self._entries),
-            "entries_last_hour": len([e for e in self._entries if e.timestamp > last_hour]),
-            "entries_last_day": len([e for e in self._entries if e.timestamp > last_day]),
+            "entries_last_hour": len(
+                [e for e in self._entries if e.timestamp > last_hour]
+            ),
+            "entries_last_day": len(
+                [e for e in self._entries if e.timestamp > last_day]
+            ),
             "failed_actions": len([e for e in self._entries if not e.success]),
             "actions_by_type": self._count_by_action(),
-            "severity_distribution": self._count_by_severity()
+            "severity_distribution": self._count_by_severity(),
         }
 
     def _count_by_action(self) -> Dict[str, int]:
@@ -254,9 +254,7 @@ class AuditService:
 
     def export_json(self) -> str:
         return json.dumps(
-            [e.model_dump() for e in self._entries],
-            default=str,
-            indent=2
+            [e.model_dump() for e in self._entries], default=str, indent=2
         )
 
 

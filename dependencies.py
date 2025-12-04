@@ -13,14 +13,14 @@ def setup_container() -> Container:
     container.register_singleton(VkManager, factory=lambda: VkManager())
     container.register_singleton(OpConnect, factory=lambda: OpConnect())
     container.register_singleton(ResponseFormatter, factory=lambda: ResponseFormatter())
-    
+
     def trust_service_factory(
         postgres: NngPostgres, vk: VkManager, op: OpConnect
     ) -> TrustService:
         return TrustService(postgres, vk, op)
-    
+
     container.register_scoped(TrustService, factory=trust_service_factory)
-    
+
     container.build()
     return container
 
@@ -43,7 +43,7 @@ async def get_trust_service():
     postgres = c.resolve(NngPostgres)
     vk = c.resolve(VkManager)
     op = c.resolve(OpConnect)
-    
+
     trust_service = TrustService(postgres, vk, op)
     yield trust_service
 

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ConfigSource(str, Enum):
@@ -73,7 +73,7 @@ class AppConfig(BaseModel):
     environment: str = "development"
     allowed_hosts: List[str] = ["*"]
     cors_origins: List[str] = ["*"]
-    
+
     database: DatabaseConfig = DatabaseConfig()
     cache: CacheConfig = CacheConfig()
     rate_limit: RateLimitConfig = RateLimitConfig()
@@ -98,25 +98,23 @@ class ConfigService:
             "cache.enabled": True,
             "cache.default_ttl": 300,
             "rate_limit.enabled": True,
-            "logging.level": "INFO"
+            "logging.level": "INFO",
         }
-        
+
         for key, value in defaults.items():
             self._config[key] = ConfigValue(
-                key=key,
-                value=value,
-                source=ConfigSource.DEFAULT
+                key=key, value=value, source=ConfigSource.DEFAULT
             )
 
     def load_from_env(self, prefix: str = "NNG_") -> int:
         count = 0
         for key, value in os.environ.items():
             if key.startswith(prefix):
-                config_key = key[len(prefix):].lower().replace("_", ".")
+                config_key = key[len(prefix) :].lower().replace("_", ".")
                 self._config[config_key] = ConfigValue(
                     key=config_key,
                     value=self._parse_env_value(value),
-                    source=ConfigSource.ENV
+                    source=ConfigSource.ENV,
                 )
                 count += 1
         return count
@@ -138,30 +136,25 @@ class ConfigService:
 
     def load_from_file(self, file_path: str) -> bool:
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 data = json.load(f)
-            
+
             self._flatten_and_load(data, ConfigSource.FILE)
             return True
         except Exception:
             return False
 
     def _flatten_and_load(
-        self,
-        data: Dict[str, Any],
-        source: ConfigSource,
-        prefix: str = ""
+        self, data: Dict[str, Any], source: ConfigSource, prefix: str = ""
     ) -> None:
         for key, value in data.items():
             full_key = f"{prefix}{key}" if prefix else key
-            
+
             if isinstance(value, dict):
                 self._flatten_and_load(value, source, f"{full_key}.")
             else:
                 self._config[full_key] = ConfigValue(
-                    key=full_key,
-                    value=value,
-                    source=source
+                    key=full_key, value=value, source=source
                 )
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -179,17 +172,9 @@ class ConfigService:
         except (ValueError, TypeError):
             return default
 
-    def set(
-        self,
-        key: str,
-        value: Any,
-        description: str = None
-    ) -> None:
+    def set(self, key: str, value: Any, description: str = None) -> None:
         self._config[key] = ConfigValue(
-            key=key,
-            value=value,
-            source=ConfigSource.RUNTIME,
-            description=description
+            key=key, value=value, source=ConfigSource.RUNTIME, description=description
         )
 
     def has(self, key: str) -> bool:
@@ -203,10 +188,7 @@ class ConfigService:
 
     def get_all(self, prefix: str = None) -> Dict[str, Any]:
         if prefix:
-            return {
-                k: v.value for k, v in self._config.items()
-                if k.startswith(prefix)
-            }
+            return {k: v.value for k, v in self._config.items() if k.startswith(prefix)}
         return {k: v.value for k, v in self._config.items()}
 
     def get_app_config(self) -> AppConfig:
@@ -236,7 +218,7 @@ class ConfigService:
         return {
             "values": {k: v.value for k, v in self._config.items()},
             "sources": {k: v.source.value for k, v in self._config.items()},
-            "app_config": self._app_config.model_dump()
+            "app_config": self._app_config.model_dump(),
         }
 
     def get_stats(self) -> Dict[str, Any]:
@@ -244,11 +226,8 @@ class ConfigService:
         for config_value in self._config.values():
             source = config_value.source.value
             sources[source] = sources.get(source, 0) + 1
-        
-        return {
-            "total_keys": len(self._config),
-            "sources": sources
-        }
+
+        return {"total_keys": len(self._config), "sources": sources}
 
 
 config_service = ConfigService()

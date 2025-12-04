@@ -41,7 +41,7 @@ class LogEntry:
             "trace_id": self.trace_id,
             "span_id": self.span_id,
             "user_id": self.user_id,
-            "request_id": self.request_id
+            "request_id": self.request_id,
         }
 
     def to_json(self) -> str:
@@ -53,7 +53,7 @@ class LoggingService:
         self,
         name: str = "app",
         min_level: LogLevel = LogLevel.INFO,
-        max_entries: int = 5000
+        max_entries: int = 5000,
     ):
         self._name = name
         self._min_level = min_level
@@ -64,7 +64,7 @@ class LoggingService:
             LogLevel.INFO: 1,
             LogLevel.WARNING: 2,
             LogLevel.ERROR: 3,
-            LogLevel.CRITICAL: 4
+            LogLevel.CRITICAL: 4,
         }
         self._context: Dict[str, Any] = {}
 
@@ -86,7 +86,7 @@ class LoggingService:
         trace_id: Optional[str] = None,
         span_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        request_id: Optional[str] = None
+        request_id: Optional[str] = None,
     ) -> LogEntry:
         merged_context = {**self._context, **(context or {})}
         return LogEntry(
@@ -99,13 +99,13 @@ class LoggingService:
             trace_id=trace_id,
             span_id=span_id,
             user_id=user_id,
-            request_id=request_id
+            request_id=request_id,
         )
 
     def _store_entry(self, entry: LogEntry) -> None:
         self._entries.append(entry)
         if len(self._entries) > self._max_entries:
-            self._entries = self._entries[-self._max_entries:]
+            self._entries = self._entries[-self._max_entries :]
 
     async def log(
         self,
@@ -116,11 +116,11 @@ class LoggingService:
         trace_id: Optional[str] = None,
         span_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        request_id: Optional[str] = None
+        request_id: Optional[str] = None,
     ) -> Optional[LogEntry]:
         if not self._should_log(level):
             return None
-        
+
         entry = self._create_entry(
             level=level,
             message=message,
@@ -129,7 +129,7 @@ class LoggingService:
             trace_id=trace_id,
             span_id=span_id,
             user_id=user_id,
-            request_id=request_id
+            request_id=request_id,
         )
         self._store_entry(entry)
         return entry
@@ -157,43 +157,51 @@ class LoggingService:
         start_time: Optional[datetime.datetime] = None,
         end_time: Optional[datetime.datetime] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[LogEntry]:
         entries = self._entries.copy()
-        
+
         if level:
             entries = [e for e in entries if e.level == level]
-        
+
         if logger_name:
             entries = [e for e in entries if e.logger_name == logger_name]
-        
+
         if user_id:
             entries = [e for e in entries if e.user_id == user_id]
-        
+
         if start_time:
             entries = [e for e in entries if e.timestamp >= start_time]
-        
+
         if end_time:
             entries = [e for e in entries if e.timestamp <= end_time]
-        
+
         entries.sort(key=lambda x: x.timestamp, reverse=True)
-        return entries[offset:offset + limit]
+        return entries[offset : offset + limit]
 
     def get_stats(self) -> Dict[str, Any]:
         now = datetime.datetime.now()
         last_hour = now - datetime.timedelta(hours=1)
-        
+
         level_counts = {level.value: 0 for level in LogLevel}
         for entry in self._entries:
             level_counts[entry.level.value] += 1
-        
+
         return {
             "total_entries": len(self._entries),
             "entries_by_level": level_counts,
-            "entries_last_hour": len([e for e in self._entries if e.timestamp > last_hour]),
-            "error_rate": level_counts.get("error", 0) / max(len(self._entries), 1) * 100,
-            "oldest_entry": self._entries[0].timestamp.isoformat() if self._entries else None,
-            "newest_entry": self._entries[-1].timestamp.isoformat() if self._entries else None
+            "entries_last_hour": len(
+                [e for e in self._entries if e.timestamp > last_hour]
+            ),
+            "error_rate": level_counts.get("error", 0)
+            / max(len(self._entries), 1)
+            * 100,
+            "oldest_entry": (
+                self._entries[0].timestamp.isoformat() if self._entries else None
+            ),
+            "newest_entry": (
+                self._entries[-1].timestamp.isoformat() if self._entries else None
+            ),
         }
 
     def clear(self) -> int:

@@ -93,9 +93,7 @@ class EditorService:
 
         user_groups = user.groups or []
 
-        potential_groups = [
-            group for group in group_list if group not in user_groups
-        ]
+        potential_groups = [group for group in group_list if group not in user_groups]
 
         if not potential_groups:
             raise CannotChooseGroupError()

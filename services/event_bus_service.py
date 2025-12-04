@@ -66,10 +66,7 @@ class EventBus:
         return f"handler_{self._handler_counter}"
 
     def subscribe(
-        self,
-        event_types: List[str],
-        callback: Callable,
-        priority: int = 0
+        self, event_types: List[str], callback: Callable, priority: int = 0
     ) -> str:
         with self._lock:
             handler_id = self._generate_handler_id()
@@ -80,7 +77,7 @@ class EventBus:
                 callback=callback,
                 event_types=set(event_types),
                 priority=priority,
-                async_handler=is_async
+                async_handler=is_async,
             )
 
             for event_type in event_types:
@@ -119,16 +116,13 @@ class EventBus:
 
         self._event_history.append(event)
         if len(self._event_history) > self._max_history:
-            self._event_history = self._event_history[-self._max_history:]
+            self._event_history = self._event_history[-self._max_history :]
 
         results = []
         handlers = self._handlers.get(event.event_type, [])
 
         wildcard_handlers = self._handlers.get("*", [])
-        all_handlers = sorted(
-            handlers + wildcard_handlers,
-            key=lambda h: -h.priority
-        )
+        all_handlers = sorted(handlers + wildcard_handlers, key=lambda h: -h.priority)
 
         for handler in all_handlers:
             result = await self._invoke_handler(handler, event)
@@ -136,15 +130,11 @@ class EventBus:
             self._result_history.append(result)
 
         if len(self._result_history) > self._max_history:
-            self._result_history = self._result_history[-self._max_history:]
+            self._result_history = self._result_history[-self._max_history :]
 
         return results
 
-    async def _invoke_handler(
-        self,
-        handler: EventHandler,
-        event: Event
-    ) -> EventResult:
+    async def _invoke_handler(self, handler: EventHandler, event: Event) -> EventResult:
         start_time = datetime.datetime.now()
 
         try:
@@ -160,7 +150,7 @@ class EventBus:
                 handler_id=handler.handler_id,
                 success=True,
                 result=result,
-                duration_ms=duration
+                duration_ms=duration,
             )
         except Exception as e:
             duration = (datetime.datetime.now() - start_time).total_seconds() * 1000
@@ -170,42 +160,36 @@ class EventBus:
                 handler_id=handler.handler_id,
                 success=False,
                 error=str(e),
-                duration_ms=duration
+                duration_ms=duration,
             )
 
     def publish_sync(self, event: Event) -> None:
         asyncio.create_task(self.publish(event))
 
     async def publish_and_wait(
-        self,
-        event: Event,
-        timeout: float = 30.0
+        self, event: Event, timeout: float = 30.0
     ) -> List[EventResult]:
         try:
-            return await asyncio.wait_for(
-                self.publish(event),
-                timeout=timeout
-            )
+            return await asyncio.wait_for(self.publish(event), timeout=timeout)
         except asyncio.TimeoutError:
-            return [EventResult(
-                event_id=event.event_id,
-                handler_id="timeout",
-                success=False,
-                error=f"Event handling timed out after {timeout}s"
-            )]
+            return [
+                EventResult(
+                    event_id=event.event_id,
+                    handler_id="timeout",
+                    success=False,
+                    error=f"Event handling timed out after {timeout}s",
+                )
+            ]
 
     def emit(
         self,
         event_type: str,
         data: Dict[str, Any] = None,
         source: str = "system",
-        priority: EventPriority = EventPriority.NORMAL
+        priority: EventPriority = EventPriority.NORMAL,
     ) -> Event:
         event = Event(
-            event_type=event_type,
-            data=data or {},
-            source=source,
-            priority=priority
+            event_type=event_type, data=data or {}, source=source, priority=priority
         )
         asyncio.create_task(self.publish(event))
         return event
@@ -218,9 +202,7 @@ class EventBus:
         return decorator
 
     def get_event_history(
-            self,
-            event_type: str = None,
-            limit: int = 100
+        self, event_type: str = None, limit: int = 100
     ) -> List[Event]:
         events = self._event_history.copy()
 
@@ -231,11 +213,11 @@ class EventBus:
         return events[:limit]
 
     def get_result_history(
-            self,
-            event_id: str = None,
-            handler_id: str = None,
-            success_only: bool = False,
-            limit: int = 100
+        self,
+        event_id: str = None,
+        handler_id: str = None,
+        success_only: bool = False,
+        limit: int = 100,
     ) -> List[EventResult]:
         results = self._result_history.copy()
 
@@ -269,7 +251,7 @@ class EventBus:
                     "handler_id": h.handler_id,
                     "event_types": list(h.event_types),
                     "priority": h.priority,
-                    "async": h.async_handler
+                    "async": h.async_handler,
                 }
                 for h in handlers
             ]
@@ -278,7 +260,9 @@ class EventBus:
         with self._lock:
             event_type_counts = {}
             for event in self._event_history:
-                event_type_counts[event.event_type] = event_type_counts.get(event.event_type, 0) + 1
+                event_type_counts[event.event_type] = (
+                    event_type_counts.get(event.event_type, 0) + 1
+                )
 
             success_count = len([r for r in self._result_history if r.success])
             failure_count = len([r for r in self._result_history if not r.success])
@@ -288,9 +272,12 @@ class EventBus:
                 "event_types": len(self._handlers),
                 "events_published": len(self._event_history),
                 "handlers_invoked": len(self._result_history),
-                "success_rate": round(success_count / (success_count + failure_count) * 100, 2) if (
-                                                                                                               success_count + failure_count) > 0 else 0,
-                "event_type_distribution": event_type_counts
+                "success_rate": (
+                    round(success_count / (success_count + failure_count) * 100, 2)
+                    if (success_count + failure_count) > 0
+                    else 0
+                ),
+                "event_type_distribution": event_type_counts,
             }
 
     def clear_history(self) -> int:

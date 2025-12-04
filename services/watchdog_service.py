@@ -136,9 +136,7 @@ class WatchdogService:
 
         await self._ban_and_send_log(user, violation, group_id)
 
-    def _check_violation_exists(
-        self, user_id: int, group_id: int
-    ) -> bool:
+    def _check_violation_exists(self, user_id: int, group_id: int) -> bool:
         """Check if a violation already exists for user in group today."""
         violations: list[Violation] = self.postgres.users.get_user(user_id).violations
         current_date = datetime.date.today()

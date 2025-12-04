@@ -29,7 +29,7 @@ router = APIRouter()
 @router.get("/admin/status", tags=["admin"])
 async def get_system_status(
     _: Annotated[bool, Depends(ensure_authorization)],
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
     status = await service.get_system_status()
@@ -39,7 +39,7 @@ async def get_system_status(
 @router.get("/admin/stats", tags=["admin"])
 async def get_admin_stats(
     _: Annotated[bool, Depends(ensure_authorization)],
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
     stats = await service.get_admin_stats()
@@ -50,17 +50,14 @@ async def get_admin_stats(
 async def promote_user_to_admin(
     request: PromoteRequest,
     _: Annotated[bool, Depends(ensure_authorization)],
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
-    success = await service.promote_to_admin(
-        admin_id=0,
-        user_id=request.user_id
-    )
-    
+    success = await service.promote_to_admin(admin_id=0, user_id=request.user_id)
+
     if not success:
         raise HTTPException(status_code=400, detail="Failed to promote user")
-    
+
     return {"detail": f"User {request.user_id} promoted to admin"}
 
 
@@ -68,17 +65,14 @@ async def promote_user_to_admin(
 async def demote_user_from_admin(
     request: PromoteRequest,
     _: Annotated[bool, Depends(ensure_authorization)],
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
-    success = await service.demote_from_admin(
-        admin_id=0,
-        user_id=request.user_id
-    )
-    
+    success = await service.demote_from_admin(admin_id=0, user_id=request.user_id)
+
     if not success:
         raise HTTPException(status_code=400, detail="Failed to demote user")
-    
+
     return {"detail": f"User {request.user_id} demoted from admin"}
 
 
@@ -86,13 +80,11 @@ async def demote_user_from_admin(
 async def bulk_update_users(
     request: BulkUpdateRequest,
     _: Annotated[bool, Depends(ensure_authorization)],
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
     result = await service.bulk_update_users(
-        admin_id=0,
-        user_ids=request.user_ids,
-        updates=request.updates
+        admin_id=0, user_ids=request.user_ids, updates=request.updates
     )
     return result
 
@@ -103,15 +95,13 @@ async def get_admin_actions(
     action_type: Optional[str] = None,
     limit: int = 100,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
     actions = await service.get_admin_actions(
-        admin_id=admin_id,
-        action_type=action_type,
-        limit=limit
+        admin_id=admin_id, action_type=action_type, limit=limit
     )
-    
+
     return {
         "actions": [
             {
@@ -121,11 +111,11 @@ async def get_admin_actions(
                 "target_type": a.target_type,
                 "target_id": a.target_id,
                 "details": a.details,
-                "timestamp": a.timestamp.isoformat()
+                "timestamp": a.timestamp.isoformat(),
             }
             for a in actions
         ],
-        "count": len(actions)
+        "count": len(actions),
     }
 
 
@@ -133,7 +123,7 @@ async def get_admin_actions(
 async def get_user_summary(
     user_id: int,
     _: Annotated[bool, Depends(ensure_authorization)],
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
     summary = await service.get_user_activity_summary(user_id)
@@ -145,11 +135,11 @@ async def search_admin_logs(
     query: str,
     limit: int = 50,
     _: Annotated[bool, Depends(ensure_authorization)] = None,
-    postgres: NngPostgres = Depends(get_db)
+    postgres: NngPostgres = Depends(get_db),
 ):
     service = AdminService(postgres)
     results = await service.search_admin_logs(query, limit)
-    
+
     return {
         "results": [
             {
@@ -158,9 +148,9 @@ async def search_admin_logs(
                 "action_type": a.action_type,
                 "target_type": a.target_type,
                 "target_id": a.target_id,
-                "timestamp": a.timestamp.isoformat()
+                "timestamp": a.timestamp.isoformat(),
             }
             for a in results
         ],
-        "count": len(results)
+        "count": len(results),
     }
