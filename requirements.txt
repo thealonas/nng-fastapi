@@ -1,5 +1,5 @@
 pydantic<3.0.0
-fastapi==0.123.7
+fastapi==0.123.9
 SQLAlchemy==2.0.44
 vk-api
 requests
