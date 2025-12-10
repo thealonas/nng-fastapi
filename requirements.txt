@@ -1,6 +1,6 @@
 pydantic<3.0.0
 fastapi==0.123.9
-SQLAlchemy==2.0.44
+SQLAlchemy==2.0.45
 vk-api
 requests
 algoliasearch
